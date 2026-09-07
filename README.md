@@ -1,8 +1,26 @@
-# Team Squared: Dev Environment
+# Team Squared Development Environment
 
-## Objective
-- Make a repo the space with submodules 
-    - app for team-squared-app
-    - services for team-squared-services
-        - needs template-squared-service
-    - wiki for team-squared-wiki to help figure out shit and kinda have a place to go
+Local development and integration workspace for the Team Squared CS 514 database product project.
+
+## Responsibilities
+
+- Pin the frontend and backend repositories as Git submodules
+- Docker Compose orchestration
+- Local relational database
+- Environment configuration
+- Service networking
+- Database migration and seed workflow
+- Health checks
+- Integration, smoke, and end-to-end test entry points
+- Reproducible full-product startup instructions
+
+## Repository Layout
+
+Planned layout:
+
+    app/       -> team-squared-app
+    service/   -> team-squared-service
+
+Documentation remains in `team-squared-wiki` and does not need to be a runtime submodule.
+
+This repository does not own application business logic or database schema definitions. Those belong in `team-squared-service`.
