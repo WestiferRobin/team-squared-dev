@@ -10,7 +10,7 @@ fail() { echo "Error: $*" >&2; exit 2; }
 case "$action" in list|setup|build|run|stop|logs|migrate|test|smoke) ;; *) fail "Unknown action: $action" ;; esac
 if [[ "$action" == list ]]; then
   while read -r role name path service migration ready body health smoke; do
-    [[ "$role" == active || "$role" == reference ]] || continue
+    [[ "$role" == active || "$role" == reference || "$role" == docs ]] || continue
     printf '  %-9s %-18s %s\n' "$role" "$name" "$path"
   done < "$registry"
   exit 0

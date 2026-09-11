@@ -3,15 +3,15 @@
 services:
   frontend:
     build:
-      context: ../frontend/team-squared-app
+      context: ../frontend/goal-stats-app
       dockerfile: Dockerfile
       target: development
     init: true
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-33000}:3000"
     volumes:
-      - ../frontend/team-squared-app/src:/app/src:ro
-      - ../frontend/team-squared-app/public:/app/public:ro
+      - ../frontend/goal-stats-app/src:/app/src:ro
+      - ../frontend/goal-stats-app/public:/app/public:ro
       - frontend-next-cache:/app/.next
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"]

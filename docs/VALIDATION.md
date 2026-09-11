@@ -1,52 +1,52 @@
-# Validation status
+# Structural synchronization validation
 
-## Implemented checks
+This validation covers the parent repository structure only. The synchronization
+commit records five canonical `.gitmodules` entries and five matching gitlinks.
+The four pre-existing pins are preserved; only the wiki receives a new pin.
 
-- Exact public Make interface; no unit/integration/migration-to-reference aliases.
-- Explicit active/reference registry and reference-free Compose definitions.
-- Unsupported ENV/project validation before lifecycle actions.
-- Existing parent env-file preservation; no runtime started by setup.
-- Committed-parent-pin requirement and dirty-child guard before any checkout changes.
-- Missing active contracts fail build/run/migrate/smoke before partial startup.
-- Missing active Makefiles fail test before any partial delegation.
-- Selected Compose files render their known frontend definition under separate projects.
+## Checks completed
 
-## Blocked end-to-end checks
+- `bash -n scripts/box.sh` and `make help` pass; all five components are listed.
+- Both LOCAL/DEV Compose files parse without starting containers. Their only
+  service is the frontend, with the renamed build context; LOCAL mounts use the
+  renamed app path. Missing Dockerfiles at preserved pins are runtime blockers,
+  not configuration syntax failures.
+- Registry paths match the five submodule paths, with two active, two reference,
+  and one docs entry. User-service runtime fields remain pending.
+- Active-only selection is preserved for build/run/migrate/test/smoke. Reference
+  and docs components have no Compose definitions and are excluded from those
+  operations. Existing incomplete-stack and dirty-child guards remain intact.
+- All five children initialize from canonical SSH URLs at the intended pins.
+  Their HEADs equal the parent index pins, origins match `.gitmodules`, and
+  worktrees are clean, with detached HEADs. Published remote history contains
+  every selected commit.
+- Parent documentation links and component paths resolve. Parent-owned text has
+  zero stale repository names. `git diff --check` passes.
 
-Current active pins are README-only, and the parent has no committed gitlinks.
-Consequently none of the following is certified:
+## Child-owned stale references
 
-- Successful fresh-clone pinned initialization.
-- Complete LOCAL/DEV image builds, migrations, startup, readiness, or logs.
-- Active-service tests or aggregate child test counts.
-- Real stack smoke, database/cache wiring, browser API integration, or persistence.
-- Active app/service standalone workflows at these pins.
-- A complete fresh clone without host Node/.NET.
+The recursive text scan also examines initialized children. Four stale references
+remain inside preserved child commits: `frontend/goal-stats-app/README.md` lines
+9 and 16, and `docs/goal-stats-wiki/README.md` lines 7 and 8. These are stale child
+repository documentation, not intentional current role mappings. They are outside
+this parent-only change and are not edited or used to infer runtime components.
+The parent README and registry define the current active/reference/docs roles.
+No child pin was advanced to remove these references.
 
-Guard/failure-path tests do not substitute for those checks. The parent scripts
-require no host Node/.NET, but no host installation can supply the missing active
-service or unpublished app contract. Resolve READINESS.md before certification.
+## Deferred verification
 
-## Executed validation
+FRESH RECURSIVE CLONE STRUCTURE READY
 
-- `make help` and `bash -n scripts/box.sh`: passed.
-- `make setup`: exit 2 as expected; preserved existing configuration and refused
-  staged-only submodule metadata before any checkout changes.
-- `make build`, `make run`, `make migrate`, `make smoke`, and `make test`, each
-  with LOCAL and DEV: exit 2 as expected for missing active contracts. No child
-  tests executed; pass/fail/skip counts are unavailable.
-- Invalid `ENV=prod`, empty ENV, and a child-style `PROJECT=app-local` were rejected.
-- Both Compose configurations parsed; references are absent; only LOCAL has
-  application source bind mounts. These are incomplete topology checks.
-- A fresh local clone of the actual committed parent, overlaid with the new
-  parent files, reproduced the missing committed-pin failure.
-- An isolated dirty child in that fixture retained its untracked work and HEAD;
-  the existing environment file remained byte-identical after setup failed.
-- The fixture was removed. Docker container inventory was unchanged.
-- `git diff --check`: passed. All four real submodules remain clean at their
-  original indexed SHAs. No staging, commits, pushes, or child edits occurred.
+Initialization and metadata checks establish structural readiness; a separate
+fresh recursive clone of the published parent is the next verification step:
+**RUN PROMPT 2 FRESH-CLONE SUBMODULE VERIFICATION**.
 
-Actual stack logs, stop/recreation persistence, successful pinned initialization,
-containerized child suites, and the no-host-toolchain workflow remain untested
-because the required active implementations are absent. Validation logs are local,
-ignored files under `artifacts/`.
+GOALSTATS-USER-SERVICE REMAINS ACTIVE BUT RUNTIME-PENDING
+
+FULL-STACK RUNTIME VERIFICATION DEFERRED UNTIL GOALSTATS-USER-SERVICE IS IMPLEMENTED
+
+No full-stack run, backend migration/health check, frontend-to-backend connectivity,
+dev smoke, or dev test was executed or certified. The preserved app pin also lacks
+its Dockerfile and Makefile. `make setup` includes runtime contract checks and may
+remain intentionally blocked after successful pinned initialization. No child
+source, env files, or generated artifacts are part of this synchronization change.

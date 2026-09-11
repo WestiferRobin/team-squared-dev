@@ -25,6 +25,7 @@ help:
 	  'First use: make setup; make migrate; make run (add ENV=dev for DEV).' \
 	  'Children remain independent: cd into an active child and use make help.' \
 	  'Active contracts must be complete before the box can build or run.' \
+	  'goalstats-user-service runtime contract pending; references and docs are non-runtime.' \
 	  'See docs/READINESS.md and docs/DEVELOPMENT.md.'
 	@bash scripts/box.sh list
 setup build run stop logs migrate test smoke:

@@ -2,7 +2,7 @@
 services:
   frontend:
     build:
-      context: ../frontend/team-squared-app
+      context: ../frontend/goal-stats-app
       dockerfile: Dockerfile
       target: runtime
     init: true

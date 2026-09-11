@@ -15,7 +15,7 @@ project when a child contract becomes unavailable, so diagnosis/cleanup stays po
 
 Setup checks Git/Docker/Compose/GNU Make and creates only missing parent env files.
 It starts no stack. It then inspects ALL configured submodules before any checkout
-operation, including references and dirty nested submodules visible through status.
+operation, including reference/docs repositories and dirty nested submodules visible through status.
 
 - HEAD must contain .gitmodules and a committed gitlink for every configured child.
 - Working .gitmodules and index pins must agree with HEAD; staged-only replacements
@@ -29,8 +29,8 @@ operation, including references and dirty nested submodules visible through stat
 - Setup never pulls latest branches, forces checkout, stages, commits, or advances
   parent gitlinks. Publish child commits before recording them in the parent.
 
-The existing parent has no committed gitlinks, so successful initialization at
-committed pins cannot yet be demonstrated. See READINESS.md.
+The parent records five gitlinks at the canonical paths listed in README.md.
+Repository structure and runtime readiness are separate; see READINESS.md.
 
 Child setup is not delegated: the established container contracts prepare tooling
 while building, and standalone child env files are unnecessary for this box.
@@ -89,7 +89,7 @@ tests serially. It clears parent Make/environment overrides and explicitly suppl
 E2E=false. A failure stops later delegation and remains nonzero; GNU Make retains its
 usual outer recipe-error status rather than preserving a runner's numeric code verbatim.
 Testing does not depend on a running box or complete runtime Compose definitions.
-References are excluded, and no successful partial test suite is reported.
+References and docs are excluded, and no successful partial test suite is reported.
 
 Make smoke checks the already-running box: frontend response, registered service
 readiness and health, and a representative non-destructive GET. Requests originate
@@ -125,3 +125,32 @@ IDE integration, and schema authoring. There is no separate privileged workflow.
 Raw Compose can bypass the completeness guards and currently starts only a partial
 frontend definition; it is not evidence of a functioning full-stack box. Do not use
 it as a workaround for the prerequisites in READINESS.md.
+
+## Existing checkouts
+
+Before updating parent `master`, inspect parent status and every initialized child
+(including nested submodules) for staged, unstaged, and untracked work. Stop if any
+child is dirty. Preserve that work deliberately before continuing; do not force
+checkout, delete old directories, or run cleanup to bypass it. Preserve any local
+child commits on a branch before moving a checkout back to its parent pin.
+
+With clean worktrees, update the parent using `git pull --ff-only origin master`
+on `master`. If it cannot fast-forward, stop and resolve the divergence separately.
+Renamed paths may leave old initialized directories behind: reconcile those with
+the new parent tree deliberately, preserving their Git linkage and any local work.
+URL synchronization alone does not move directories or repair gitlink paths.
+Once the parent tree and child paths are reconciled, run:
+
+```bash
+git submodule sync --recursive
+git submodule update --init --recursive --checkout
+git submodule status --recursive
+```
+
+Verify every child HEAD equals its parent pin and every origin uses the canonical
+URL in `.gitmodules`. Do not pull child branches or advance pins as part of sync.
+
+`docs/goal-stats-wiki` is the project/class documentation repository. Its `docs`
+registry role appears in component listings and participates in pinned setup,
+but never in build/run/migrate/test/smoke or Compose. The template and
+RoadToTheFinal retain the same non-runtime exclusion through their `reference` role.

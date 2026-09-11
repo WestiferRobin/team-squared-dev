@@ -1,39 +1,44 @@
-# Current readiness: BLOCKED
+# Readiness: structure synchronized, runtime pending
 
-The current checkout cannot run the complete active box. These are repository
-prerequisites, not missing host Node/.NET installations.
+The parent records five submodule gitlinks and canonical repository URLs.
+The template/app paths were reconciled without upgrading their commits. The
+user-service and RoadToTheFinal pins are also preserved. The wiki pin deliberately
+uses its published default-branch HEAD at synchronization time.
 
-| Component | Recorded index SHA | Actual contents / blocker |
-| --- | --- | --- |
-| frontend/team-squared-app | e01a3475b92fe55808006bf91a470fe97eb2b4ef | README only; no Dockerfile or Makefile. Prompt 2 changes exist in the sibling checkout, not this pin. |
-| backend/goalstats-user-service | 70c77c692993fc18e9f484bf22266a15288c0541 | README only; no application, Dockerfile, Makefile, migrations, or test contract. Published HEAD was also this commit when checked. |
-| backend/team-squared-service | 47ed7cb27c1a00bf6a4b784276f86182ca3c6d05 | REFERENCE ONLY; never substitute this template for the active backend. |
-| frontend/RoadToTheFinal | 4c77197e209292f70ae788e6d4539bb89189e963 | REFERENCE ONLY; excluded from active operations. |
+| Role | Component | Pinned SHA | State |
+| --- | --- | --- | --- |
+| ACTIVE | frontend/goal-stats-app | e01a3475b92fe55808006bf91a470fe97eb2b4ef | Preserved pin; no Dockerfile or Makefile. |
+| ACTIVE | backend/goalstats-user-service | 70c77c692993fc18e9f484bf22266a15288c0541 | Runtime contract pending; no application/container/test contract. |
+| REFERENCE | backend/template-goalstats-service | 47ed7cb27c1a00bf6a4b784276f86182ca3c6d05 | Never substitute for the active backend. |
+| REFERENCE | frontend/RoadToTheFinal | 4c77197e209292f70ae788e6d4539bb89189e963 | Excluded from active operations. |
+| DOCS | docs/goal-stats-wiki | d3992eb4d0c2e2b0b99fee0ab9da14da422c2071 | Project/class documentation; excluded from runtime and dev tests. |
 
-The parent HEAD contains only README.md. Its .gitmodules and four gitlinks are
-staged additions, not committed parent pins. No commit, staging, pointer update,
-or publication is performed by this implementation.
+## Structural scope
 
-## Required before certification
+The synchronization commit records `.gitmodules` and all five gitlinks together.
+No existing child pin is upgraded and no child application source is changed.
+Next: **RUN PROMPT 2 FRESH-CLONE SUBMODULE VERIFICATION**.
+A fresh recursive clone should resolve these paths at their recorded pins; that
+structural readiness does not imply runtime readiness.
 
-1. Publish an app commit containing the Prompt 2 Dockerfile/Make/test contract.
-2. Implement and publish the ACTIVE goalstats-user-service in its own repository.
-   Supply its actual LOCAL/DEV Dockerfile targets, container port, dependencies,
-   runtime variables, readiness/health endpoints, representative GET, migration
-   mechanism (or explicitly no migrations), and normal containerized test command.
-3. Deliberately pin those published commits in the parent and commit .gitmodules
-   and gitlinks. This is maintainer work, never an automatic setup operation.
-4. Complete the active backend entries in config/components.tsv and both Compose
-   files using that verified contract. Allocate box-owned ports and persistent
-   database volumes at that point. Do not guess EF paths or activate the template.
-5. Run the documented LOCAL/DEV, persistence, delegation, smoke, standalone-child,
-   and clean-clone checks against those real pinned implementations.
+## Runtime boundary
 
-The frontend Compose entries reuse the known Prompt 2 contract. They are an
-incomplete composition until the active backend is supplied. Public commands guard
-against accidentally certifying a frontend-only stack as the complete box.
+GOALSTATS-USER-SERVICE REMAINS ACTIVE BUT RUNTIME-PENDING
 
-The app scaffold also has no browser API client yet. A future successful Node
-request from the frontend container to a service proves network connectivity, not
-an implemented browser-to-backend feature. Full browser integration cannot be
-certified without that application behavior.
+FULL-STACK RUNTIME VERIFICATION DEFERRED UNTIL GOALSTATS-USER-SERVICE IS IMPLEMENTED
+
+The registry deliberately retains pending migration/readiness/health/smoke values
+for the user-service. Neither Compose file defines its runtime contract. Both
+frontend contexts use `frontend/goal-stats-app`, but the preserved app pin also
+lacks its Dockerfile/Makefile. Updating child versions is separate future work.
+
+Complete-stack build/run/migrate/smoke remain guarded against partial startup.
+Dev `make test` requires every active child's Makefile and remains blocked at these
+pins. `make setup` can initialize committed submodules and still fail the runtime
+contract checks. Missing runtime contracts are expected and do not invalidate
+repository/submodule structural synchronization.
+
+No backend implementation, migrations, endpoints, runtime tests, Compose backend
+service, or fabricated health contract is part of this synchronization. References
+and docs cannot stand in for missing active components. No full-stack runtime,
+connectivity, smoke, or test certification is claimed.

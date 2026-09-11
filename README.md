@@ -3,23 +3,30 @@
 Canonical workspace for running the complete ACTIVE frontend and product services
 in one Docker Compose project. Children remain independently usable.
 
-**Current status: BLOCKED.** The pinned active children do not yet contain the
-required implementation/contracts, and parent submodule pins are staged rather
-than committed. See [exact prerequisites](docs/READINESS.md). The commands and
-frontend composition are prepared, but a working full stack is not certified.
+**Repository structure: synchronized. Runtime: BLOCKED.** The parent records five
+submodule pins at canonical paths. The four existing child versions are preserved;
+this synchronization adds only the wiki pin. This does not certify a working stack.
+See [readiness boundaries](docs/READINESS.md).
 
-## Active and reference repositories
+## Active, reference, and documentation repositories
 
 | Role | Path |
 | --- | --- |
-| Active frontend | frontend/team-squared-app |
-| Active backend | backend/goalstats-user-service |
-| Reference template only | backend/team-squared-service |
-| Legacy reference only | frontend/RoadToTheFinal |
+| ACTIVE frontend | frontend/goal-stats-app |
+| ACTIVE — runtime contract pending | backend/goalstats-user-service |
+| REFERENCE template | backend/template-goalstats-service |
+| REFERENCE legacy frontend | frontend/RoadToTheFinal |
+| DOCS project/class documentation | docs/goal-stats-wiki |
 
 `config/components.tsv` is the explicit registry. Being a submodule does not make
-a repository active. References may be initialized/pinned by setup but are never
-built, started, migrated, or tested by normal box operations.
+a repository active. References and docs are initialized/pinned by the dev repo
+and available to developers, but never built, run, migrated, tested, or smoked by
+normal box operations. They are not included in Compose.
+
+For structure-only verification, clone recursively and inspect `git submodule
+status`. Next: **Prompt 2 fresh-clone submodule verification**. Existing checkouts
+must follow the [safe synchronization workflow](docs/DEVELOPMENT.md#existing-checkouts).
+`make setup` also checks runtime contracts and may intentionally remain blocked.
 
 ## Intended first-use workflow
 
