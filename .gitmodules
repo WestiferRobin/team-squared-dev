@@ -1,0 +1,12 @@
+[submodule "backend/team-squared-service"]
+	path = backend/team-squared-service
+	url = git@github.com:WestiferRobin/team-squared-service.git
+[submodule "backend/goalstats-user-service"]
+	path = backend/goalstats-user-service
+	url = git@github.com:WestiferRobin/goalstats-user-service.git
+[submodule "frontend/team-squared-app"]
+	path = frontend/team-squared-app
+	url = git@github.com:WestiferRobin/team-squared-app.git
+[submodule "frontend/RoadToTheFinal"]
+	path = frontend/RoadToTheFinal
+	url = git@github.com:Estebansito1/RoadToTheFinal.git

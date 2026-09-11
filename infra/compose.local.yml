@@ -1,0 +1,23 @@
+# Incomplete until the ACTIVE user-service contract is supplied.
+# Normal Make operations validate ALL active components before starting anything.
+services:
+  frontend:
+    build:
+      context: ../frontend/team-squared-app
+      dockerfile: Dockerfile
+      target: development
+    init: true
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-33000}:3000"
+    volumes:
+      - ../frontend/team-squared-app/src:/app/src:ro
+      - ../frontend/team-squared-app/public:/app/public:ro
+      - frontend-next-cache:/app/.next
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 10s
+      retries: 40
+      start_period: 15s
+volumes:
+  frontend-next-cache:

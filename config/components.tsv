@@ -1,0 +1,5 @@
+# role name path compose-service migration-service ready-url ready-body health-url smoke-url
+active	app	frontend/team-squared-app	frontend	none	http://frontend:3000/	none	none	http://frontend:3000/
+active	user-service	backend/goalstats-user-service	user-service	pending	pending	pending	pending	pending
+reference	service-template	backend/team-squared-service	none	none	none	none	none	none
+reference	legacy-frontend	frontend/RoadToTheFinal	none	none	none	none	none	none
