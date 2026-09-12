@@ -11,31 +11,100 @@ team-squared-local or team-squared-dev. Optional PROJECT overrides must begin wi
 the corresponding name plus a dash. Stop/logs can still operate on that owned
 project when a child contract becomes unavailable, so diagnosis/cleanup stays possible.
 
-## Setup and submodules
+## Canonical workspace and daily synchronization
 
-Setup checks Git/Docker/Compose/GNU Make and creates only missing parent env files.
-It starts no stack. It then inspects ALL configured submodules before any checkout
-operation, including reference/docs repositories and dirty nested submodules visible through status.
+Clone the parent once, then edit the independent repositories under backend/,
+frontend/, and docs/. The parent gitlink is an **approved integration commit**;
+a child branch holds active development history. Dirty child content is unfinished
+work. A published child commit is a candidate for later parent integration, not an
+automatic pin upgrade.
 
-- HEAD must contain .gitmodules and a committed gitlink for every configured child.
-- Working .gitmodules and index pins must agree with HEAD; staged-only replacements
-  fail rather than becoming hidden new defaults.
-- Dirty initialized children produce an explicit warning and nonzero result. No
-  child is checked out or overwritten; commit/stash intentionally outside setup.
-- Clean initialized children and missing children are synchronized/initialized at
-  the pinned commits with git submodule update --init --recursive --checkout.
-- Detached HEAD at a pin is normal. A clean checkout may move back to its recorded
-  pin; existing branch references are not deleted. Create a branch before editing.
-- Setup never pulls latest branches, forces checkout, stages, commits, or advances
-  parent gitlinks. Publish child commits before recording them in the parent.
+```bash
+git clone git@github.com:WestiferRobin/team-squared-dev.git
+cd team-squared-dev
+make setup
+# Open this root directory in your editor.
+# Later, with parent master and all repositories clean and at approved pins:
+make sync
+```
 
-The parent records five gitlinks at the canonical paths listed in README.md.
-Repository structure and runtime readiness are separate; see READINESS.md.
+`setup` prepares the currently checked-out parent, including a feature branch or
+historical detached commit. It never fetches or moves the parent. `sync` requires
+parent `master`, fetches `origin/master` without submodule recursion, refuses local
+ahead/divergent history, and fast-forwards only. It then uses the updated parent's
+metadata and helper to materialize exact approved pins. Neither command needs
+Docker, calls Compose, runs child setup/tests, or validates runtime contracts.
+Missing runtime contracts do not prevent workspace readiness.
 
-Child setup is not delegated: the established container contracts prepare tooling
-while building, and standalone child env files are unnecessary for this box.
-Once real active contracts exist, setup validates them instead of creating unused
-standalone configuration. Child files and independent workflows remain untouched.
+Both commands inspect parent and every initialized child, recursively, before
+checkout movement. Staged/unstaged tracked changes, nonignored untracked files,
+conflicts, in-progress merge/rebase/cherry-pick/revert/bisect operations, edited
+metadata/gitlinks, and clean off-pin children cause refusal. Missing child paths
+must be empty, and symlinks cannot occupy them. Work is never automatically stashed,
+reset, cleaned, staged, or discarded. The existing untracked parent `TODO.md` is
+subject to the same policy and is preserved; it is not an exception.
+
+Ignored files are excluded according to Git's normal ignore rules: this parent's
+`.DS_Store`, `artifacts/`, `infra/.env.local`, and `infra/.env.dev`, plus effective
+repository-local/global excludes and each child's ignore rules. They are harmless
+only if incoming tracked content will not replace them. Sync checks such collisions
+before the relevant checkout. Do not run concurrent Git edits during setup/sync.
+
+Canonical URLs come from committed `.gitmodules`; setup/sync synchronize them at
+each nesting level. Children are initialized at gitlink SHAs, never remote branch
+heads. Already attached child branches at the required SHA stay attached. When sync
+adopts another approved SHA, detached HEAD is normal; existing branch refs remain.
+Clean off-pin checkouts may contain unpublished work, so preserve their commits on
+a branch and deliberately select the current approved pin before synchronization.
+
+Incoming parent removal/rename of an occupied submodule path requires manual
+reconciliation before parent movement. Ordinary new submodules can initialize
+normally. Git sync is not atomic: if the parent advances and a child download fails,
+repositories are preserved and a journal under the parent's Git directory records
+the target and exact prior child SHAs. Resolve the issue and retry `make sync`.
+The retry completes that recorded target before a later sync fetches newer master.
+It still refuses dirty state or unrelated off-pin commits; no rollback is fabricated.
+Do not delete the journal to bypass safety. `setup` asks you to finish an interrupted
+sync first. Changes to repositories outside that recorded transition require manual
+review. SSH credentials and repository access are checked by Git when it needs to
+fetch; an already complete offline setup does not probe GitHub unnecessarily.
+
+## Developing and publishing a child
+
+```bash
+cd backend/goalstats-user-service
+git switch -c feat/architecture-prototype
+# edit/test using the child's available tools
+# review changes before staging
+git add .
+git commit -m "Implement architecture prototype"
+git push -u origin feat/architecture-prototype
+```
+
+The same independent-repository workflow applies to `frontend/goal-stats-app` and
+`docs/goal-stats-wiki`: enter the child, create a feature branch, edit/test, and
+commit/publish there. App standalone manual runtime verification remains pending.
+Wiki edits do not change the parent pin until an approved wiki commit is integrated.
+
+For the upcoming user-service bootstrap, the tracked template source is
+`backend/template-goalstats-service` at `e89164842ca2c0f2954919a38da3ed4924d5f3ac`;
+the destination remains `backend/goalstats-user-service` at
+`70c77c692993fc18e9f484bf22266a15288c0541`. Create the destination feature branch
+before a later tracked export and implementation. Pin adoption performs neither.
+The template and RoadToTheFinal remain references, excluded from active composition.
+
+Parent status may show a modified child because its content is dirty or HEAD differs
+from the approved gitlink. Publishing the child does not update the parent pin.
+After child review, parent integration is separate and deliberate:
+
+1. Verify the selected child commit is published and approved.
+2. Select that commit in the child, then return to the parent.
+3. Stage only its gitlink: `git add backend/goalstats-user-service`.
+4. Review `git diff --cached --submodule=log`.
+5. Commit and publish the parent pin update through normal review.
+
+There is no automated upgrade command. Use a separate integration checkout when
+needed; setup/sync intentionally refuse an off-pin development checkout.
 
 ## Configuration and ports
 
@@ -128,29 +197,11 @@ it as a workaround for the prerequisites in READINESS.md.
 
 ## Existing checkouts
 
-Before updating parent `master`, inspect parent status and every initialized child
-(including nested submodules) for staged, unstaged, and untracked work. Stop if any
-child is dirty. Preserve that work deliberately before continuing; do not force
-checkout, delete old directories, or run cleanup to bypass it. Preserve any local
-child commits on a branch before moving a checkout back to its parent pin.
+Use `make sync` on clean parent master with children at current pins. Resolve its
+reported safety refusal deliberately; do not force checkout or delete old paths to
+bypass it. `make setup` initializes missing pins and env files for the current parent
+checkout without updating master. Inspect pins with `git submodule status --recursive`
+or `bash scripts/workspace.sh status`.
 
-With clean worktrees, update the parent using `git pull --ff-only origin master`
-on `master`. If it cannot fast-forward, stop and resolve the divergence separately.
-Renamed paths may leave old initialized directories behind: reconcile those with
-the new parent tree deliberately, preserving their Git linkage and any local work.
-URL synchronization alone does not move directories or repair gitlink paths.
-Once the parent tree and child paths are reconciled, run:
-
-```bash
-git submodule sync --recursive
-git submodule update --init --recursive --checkout
-git submodule status --recursive
-```
-
-Verify every child HEAD equals its parent pin and every origin uses the canonical
-URL in `.gitmodules`. Do not pull child branches or advance pins as part of sync.
-
-`docs/goal-stats-wiki` is the project/class documentation repository. Its `docs`
-registry role appears in component listings and participates in pinned setup,
-but never in build/run/migrate/test/smoke or Compose. The template and
-RoadToTheFinal retain the same non-runtime exclusion through their `reference` role.
+The wiki is documentation; the template and RoadToTheFinal are references. All are
+pinned and synchronized but excluded from normal runtime and active tests.

@@ -7,7 +7,7 @@ mode=${2-local}
 project=${3:-team-squared-$mode}
 registry=config/components.tsv
 fail() { echo "Error: $*" >&2; exit 2; }
-case "$action" in list|setup|build|run|stop|logs|migrate|test|smoke) ;; *) fail "Unknown action: $action" ;; esac
+case "$action" in list|build|run|stop|logs|migrate|test|smoke) ;; *) fail "Unknown action: $action" ;; esac
 if [[ "$action" == list ]]; then
   while read -r role name path service migration ready body health smoke; do
     [[ "$role" == active || "$role" == reference || "$role" == docs ]] || continue
@@ -18,41 +18,6 @@ fi
 case "$mode" in local|dev) ;; *) fail "Unsupported ENV=$mode. Use local or dev." ;; esac
 case "$project" in team-squared-$mode|team-squared-$mode-*) ;; *) fail "PROJECT must be team-squared-$mode or begin team-squared-$mode-." ;; esac
 [[ "$project" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || fail 'Invalid project name.'
-
-# Every configured submodule must have a COMMITTED gitlink; staged-only pins cannot
-# define a reproducible checkout. Inspect all children before changing any checkout.
-check_pins() {
-  local errors=0 path record staged actual dirty
-  if ! git cat-file -e HEAD:.gitmodules 2>/dev/null; then
-    echo 'Missing committed .gitmodules. Current staged additions are not published pins.' >&2
-    errors=1
-  elif ! git diff --quiet HEAD -- .gitmodules; then
-    echo '.gitmodules differs from HEAD; setup will not use uncommitted URLs.' >&2
-    errors=1
-  fi
-  while read -r key path; do
-    [[ -n "$path" ]] || continue
-    if [[ -e "$path/.git" ]]; then
-      dirty=$(git -C "$path" status --porcelain --untracked-files=all --ignore-submodules=none)
-      if [[ -n "$dirty" ]]; then
-        echo "Dirty submodule preserved: $path. Setup will not checkout or overwrite it." >&2
-        errors=1
-      fi
-    fi
-    record=$(git ls-tree HEAD -- "$path")
-    if [[ "$record" != 160000\ commit\ * ]]; then
-      echo "Missing committed submodule pin: $path" >&2
-      errors=1
-      continue
-    fi
-    staged=$(git ls-files --stage -- "$path")
-    if [[ $(printf '%s\n' "$record" | awk '{print $3}') != $(printf '%s\n' "$staged" | awk '{print $2}') ]]; then
-      echo "Staged pin differs from HEAD: $path; no automatic pointer changes." >&2
-      errors=1
-    fi
-  done < <(git config --file .gitmodules --get-regexp '^submodule\..*\.path$' || true)
-  return "$errors"
-}
 
 load_compose() {
   if [[ "$mode" == local ]]; then FRONTEND_PORT=33000; else FRONTEND_PORT=33001; fi
@@ -109,26 +74,6 @@ probe() {
   "${compose[@]}" exec -T frontend node - "$probe_mode" "${arguments[@]}" < scripts/probe.cjs
 }
 
-if [[ "$action" == setup ]]; then
-  for command in git docker make; do command -v "$command" >/dev/null || fail "Missing $command"; done
-  make_version=$(make --version)
-  [[ "$make_version" =~ GNU\ Make\ ([0-9]+)\.([0-9]+) ]] || fail 'GNU Make 3.81+ is required.'
-  (( BASH_REMATCH[1] > 3 || (BASH_REMATCH[1] == 3 && BASH_REMATCH[2] >= 81) )) || fail 'GNU Make 3.81+ is required.'
-  docker compose version
-  docker info >/dev/null || fail 'Start Docker Engine/Desktop.'
-  for selected in local dev; do
-    file="infra/.env.$selected"
-    if [[ -e "$file" || -L "$file" ]]; then echo "Preserved $file"
-    else (set -o noclobber; cat "infra/.env.$selected.example" > "$file"); echo "Created $file"; fi
-  done
-  check_pins || fail 'Submodule setup blocked before any child checkout changes. See docs/READINESS.md.'
-  git submodule sync --recursive
-  git submodule update --init --recursive --checkout
-  load_compose
-  check_contracts || fail 'Active child contracts are incomplete. No stack was started.'
-  echo 'Setup complete. Child setup is unnecessary: images prepare tooling; box configuration is parent-owned.'
-  exit 0
-fi
 if [[ "$action" == test ]]; then
   missing=0
   while read -r role name path service migration ready body health smoke; do
