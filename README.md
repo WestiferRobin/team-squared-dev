@@ -34,6 +34,21 @@ changes env files. Both preserve developer work by refusing dirty or off-pin sta
 Detached child HEADs are normal. Create a child feature branch before editing or
 committing: `cd <child>` then `git switch -c <feature-branch>`.
 
+## Bootstrap an approved service
+
+`make scaffold-service SERVICE=goalstats-user-service DRY_RUN=true` previews copying
+exact tracked files from the parent-pinned reference template into an approved
+placeholder. Omit `DRY_RUN=true` to install after a successful preview. The destination
+must already be clean on a `feat/*` branch at its approved placeholder commit. Parent
+changes, including untracked TODO.md, block the command; unrelated child work does
+not. No Docker or network is required after setup.
+
+Scaffolding preserves the destination Git repository and leaves unstaged child
+changes. It does not rename projects, remove migrations, implement domains, or
+certify a service. A second invocation refuses. See the [scaffold contract and
+beginner workflow](docs/DEVELOPMENT.md#service-scaffolding) before use. The tool passed
+actual-template certification in disposable workspaces. Real-service use still requires resolving local safety blockers and reviewing a successful preview.
+
 ## Repositories
 
 | Role | Path |
@@ -53,6 +68,7 @@ but excluded from normal build/run/migrate/test/smoke and Compose.
 make help
 make setup
 make sync
+make scaffold-service SERVICE=<approved-service> [DRY_RUN=true]
 make build [ENV=local|dev]
 make run [ENV=local|dev]
 make stop [ENV=local|dev]

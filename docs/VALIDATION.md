@@ -148,3 +148,72 @@ PowerShell is not the primary script interface. Full-stack runtime, migrations,
 health/connectivity, smoke, and active-suite certification remain deferred.
 
 GOALSTATS-USER-SERVICE REMAINS RUNTIME-PENDING
+
+## Scaffold command release certification
+
+Run the dedicated fixture suite independently of public active-service tests:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'scaffold_service_test.py'
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'workspace_test.py'
+```
+
+Fixtures create disposable real repositories, approved placeholder commits, and
+local remotes; they never scaffold the real user service. The scaffold helper has
+no runtime Python dependency. Tests exercise exact payload and executable modes,
+Git identity/index preservation, literal Make inputs, preview, source/destination
+safety, approval metadata, ignore compatibility, archive attributes, forbidden
+artifacts, unrelated child work, repeat refusal, and operational recovery.
+Fixture-scoped command wrappers inject failures; no production failure-injection
+option is exposed. Docker is absent from fixture PATH and Git transport is disabled
+inside the scaffold helper, including lazy-fetch prevention.
+
+Certification results on macOS Bash 3.2.57 / GNU Make 3.81:
+
+- Scaffold suite: **58 passed, 0 failed, 0 skipped, 58 total**.
+- Existing workspace regression suite: **19 passed, 0 failed, 0 skipped, 19 total**.
+- Shell syntax checks, Make help, and `git diff --check`: passed.
+- The real user service was not scaffolded. Its source/pin and all other child pins
+  remain unchanged; TODO.md retains its recorded SHA-256.
+
+Shared Git checks are extracted into scripts/git-safety.sh. Existing workspace
+fixtures include that library and must retain all 19 passing setup/sync cases.
+Runtime box/Compose files, .gitmodules, all pins, and child source stay unchanged.
+
+Actual-template certification used disposable parent clones populated from locally
+available child Git objects, with canonical child origins and the parent's exact
+pins. No real child was fetched or updated. Source:
+`backend/template-goalstats-service` at
+`e89164842ca2c0f2954919a38da3ed4924d5f3ac`; destination baseline:
+`backend/goalstats-user-service` at
+`70c77c692993fc18e9f484bf22266a15288c0541`.
+
+Both preview and installation passed with Docker absent and Git transports disabled
+after setup. All **139 tracked files** matched the approved template's paths, bytes,
+and modes; migrations, Item/Action, and template identities remained intact. Git
+administration stayed destination-owned: pointer/resolution, origin/config, branch,
+HEAD, refs/history, and index were unchanged. Parent HEAD, index, and gitlinks were
+unchanged; parent status showed dirty child content with nothing staged.
+
+Actual and dry-run repeats refused both before and after a disposable child commit,
+without overwriting, deleting, or staging anything. Fixture tests additionally cover
+missing offline objects, archive/extraction/temp failures, partial-install and final
+verification failures, malformed approvals, hostile inputs, and simultaneous lock
+contention. Recovery evidence survives partial writes and prevents blind retries.
+
+The documented setup → feature branch → preview → install → child status/diff
+sequence was exercised in two independent disposable workspaces. This is a scripted beginner
+walkthrough, not a study with human participants. Output exposes exact identities,
+file additions/replacements, and the expected unstaged child work; raw scripts,
+approval metadata, and Git diffs remain directly inspectable.
+
+All five real runtime guard checks (`build`, `run`, `migrate`, `test`, `smoke`)
+refused the runtime-pending user service before partial execution, as required.
+No full-stack or destination-service runtime certification is implied.
+
+The real dry run was **NOT RUN**: untracked user-owned TODO.md and the destination's
+detached HEAD block it. The uncommitted parent implementation also blocked it during
+certification. These rules were not bypassed; no real feature branch was created.
+Resolve prerequisites and perform the real preview before scaffolding in a separate
+explicit task. Windows remains unverified. No production safety changes were needed
+by certification; five fixture cases and documentation updates complete the release.

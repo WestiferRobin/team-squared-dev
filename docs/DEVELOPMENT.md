@@ -106,6 +106,115 @@ After child review, parent integration is separate and deliberate:
 There is no automated upgrade command. Use a separate integration checkout when
 needed; setup/sync intentionally refuse an off-pin development checkout.
 
+## Service scaffolding
+
+The parent owns one bootstrap command:
+
+```bash
+make scaffold-service SERVICE=goalstats-user-service
+make scaffold-service SERVICE=goalstats-user-service DRY_RUN=true
+```
+
+SERVICE is required. DRY_RUN defaults to false and accepts exactly `true` or `false`;
+an explicitly empty value is invalid. There are no force, confirmation, source, or
+destination overrides. The helper exits 0 on success, 2 on validation/safety refusal,
+and 1 on operational failure; GNU Make reports its own nonzero recipe-failure code.
+
+The two-column `config/scaffolds.tsv` explicitly approves a service and placeholder
+commit. Committed component metadata supplies its active backend role, and committed
+`.gitmodules` supplies the canonical URL. The source is always the current parent's
+exact `backend/template-goalstats-service` gitlink. No latest branch selection, fetch,
+setup, or sync is performed. Setup must already have initialized the repositories.
+
+Only the parent, template, and destination receive relevant safety checks. Unrelated
+child dirty/off-pin state is allowed, but parent staged gitlink changes are refused.
+The source and destination must be clean and at their pins, with canonical origins
+and no in-progress Git operations. Destination HEAD must also match its approved
+placeholder SHA and an existing `feat/<nonempty-name>` branch. No branch is created.
+Parent staged/unstaged/untracked work, including TODO.md, causes refusal. Preserve
+and resolve that work deliberately; the command never moves/deletes/ignores it.
+
+The destination must contain exactly approved regular README.md and .gitignore
+files, matching committed blob bytes and modes, with no untracked or ignored files.
+README is replaced by the template README. Ignore compatibility is conservative:
+identical rule lists pass; otherwise destination positive rules must remain in
+order, destination negations are refused, and new template negations are limited
+to `!.env.example` when it does not undo a destination exclusion. Comments and empty
+lines do not affect comparison. Custom rules requiring reconciliation cause refusal.
+The template ignore file is copied byte-for-byte; there is no automatic merge.
+
+The helper archives the exact local commit into private temporary storage, extracts
+it there, and verifies paths, raw blob hashes, and executable bits against its Git
+tree. Archive attributes that omit or substitute content cause refusal. Only regular
+100644/100755 files and portable ASCII letter/digit/dot/underscore/hyphen/slash paths
+are supported initially; unsafe paths, case collisions, symlinks, and nested gitlinks
+are refused. Git metadata, real dotenv files, build/test outputs, local IDE state,
+logs, database dumps/cache files, and Docker runtime data are forbidden even if
+tracked. Root `.env.example`, Docker configuration, SQL source, and migrations are
+allowed. Ignored source files never enter the tracked-file archive.
+
+Dry run performs the same checks and temporary export verification, prints exact
+source/destination identities and additions/replacements, and changes no repository
+files, refs, index, or configuration. It is a preview, not a reservation: actual
+installation revalidates the repositories and feature branch before writing.
+
+A workspace-exclusive empty lock directory lives under `/tmp`, independent of TMPDIR.
+If it exists, the command reports its exact path and refuses. Check that no scaffold
+is running before manually removing a stale empty lock. No daemon is involved.
+
+Before installing, the helper stores original placeholders and Git identity
+snapshots in private temporary storage. It installs only manifest-listed files,
+then verifies payload and preserved Git identity. `.git`, origin, refs, HEAD, branch,
+and indexes remain unchanged; no stage, commit, push, or parent pin update occurs.
+The parent displays dirty child content; the child contains modified placeholders
+and untracked new source files. This is expected. Do not run setup/sync to discard it.
+
+Installation is not atomic. Pre-install failures clean up owned temporary files
+without changing the destination. Once installation starts, a failure preserves a
+recovery directory containing original placeholders, manifest, and completed.txt,
+and records its path in the parent's Git directory under
+`team-squared-scaffold-incomplete`. The error identifies the failed path/phase.
+Inspect and preserve the resulting work; reconcile deliberately before removing the
+indicator. Do not blindly rerun, reset, or clean. The command performs no automatic
+rollback, and a repeat invocation refuses dirty or already-committed scaffolds.
+
+Beginner workflow for an approved scaffolding task:
+
+```bash
+make setup
+
+git -C backend/goalstats-user-service \
+  switch -c feat/architecture-prototype
+
+make scaffold-service \
+  SERVICE=goalstats-user-service \
+  DRY_RUN=true
+
+make scaffold-service \
+  SERVICE=goalstats-user-service
+
+cd backend/goalstats-user-service
+git status --short
+git diff
+```
+
+Resolve parent safety blockers first. Review untracked files using `git status`;
+`git diff` alone does not display them. Subsequent implementation renames/adapts the
+template to GoalStats.UserService, removes copied migration artifacts, and preserves
+Item/Action until later domain prompts. Scaffolding itself leaves all template
+identity, migrations, Item/Action, source, and tests unchanged.
+
+Commit and publish reviewed implementation inside the child feature branch. Only
+later integrate an approved published commit through a deliberate parent gitlink
+update. Scaffolding never stages that pointer. The reference template remains
+excluded from normal active runtime/testing.
+
+Runtime requirements are Git, Bash, tar, and ordinary shell utilities, with GNU Make
+3.81+ for the public interface. No Python, rsync, Docker, Compose, or network is
+required by scaffolding. macOS Bash 3.2 is the validation target; WSL is a candidate
+with the same tools. Git Bash requires verified Make, filenames, and executable-bit
+behavior. Native PowerShell and Windows are not certified.
+
 ## Configuration and ports
 
 The parent owns infra/.env.local and infra/.env.dev, created only when absent from

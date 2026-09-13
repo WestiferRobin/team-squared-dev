@@ -51,3 +51,15 @@ Destination: `backend/goalstats-user-service` at placeholder commit
 `70c77c692993fc18e9f484bf22266a15288c0541`. The workspace provides both repositories
 for a later tracked template export into a user-service feature branch. No export,
 branch creation, or product implementation is performed by pin adoption.
+
+## Scaffold tooling boundary
+
+The parent now provides `make scaffold-service SERVICE=<approved-service>` and
+`DRY_RUN=true` for an explicitly approved placeholder on a clean feature branch.
+This is deterministic template copying, independent of Docker/network after setup.
+It does not implement or certify the destination service. Actual-template disposable
+certification passed, including exact payload and Git preservation checks. A successful
+real dry run is still required before using it on the real user service. Its untracked parent
+TODO.md and detached child HEAD remain safety blockers until deliberately resolved.
+No real user-service scaffold, child source change, or pin adoption accompanies
+the scaffold command implementation.

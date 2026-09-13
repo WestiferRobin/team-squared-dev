@@ -43,7 +43,7 @@ class Workspace(unittest.TestCase):
         self.child = self.init('child')
         self.pin = self.git(self.child, 'rev-parse', 'HEAD')
         self.parent = self.init('parent')
-        for name in ['Makefile', 'scripts/workspace.sh', 'scripts/box.sh', 'config/components.tsv',
+        for name in ['Makefile', 'scripts/workspace.sh', 'scripts/git-safety.sh', 'scripts/box.sh', 'config/components.tsv',
                      'infra/.env.local.example', 'infra/.env.dev.example', '.gitignore']:
             dest = self.parent / name
             dest.parent.mkdir(parents=True, exist_ok=True)
