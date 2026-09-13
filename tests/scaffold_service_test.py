@@ -45,7 +45,7 @@ class Scaffold(unittest.TestCase):
                         GIT_ALLOW_PROTOCOL='file', GIT_OPTIONAL_LOCKS='0',
                         GIT_AUTHOR_NAME='Fixture', GIT_AUTHOR_EMAIL='fixture@example.invalid',
                         GIT_COMMITTER_NAME='Fixture', GIT_COMMITTER_EMAIL='fixture@example.invalid')
-        for key in ['SERVICE', 'DRY_RUN', 'MAKEFLAGS', 'MFLAGS', 'MAKEOVERRIDES']:
+        for key in ['SERVICE', 'DOMAIN', 'DRY_RUN', 'MAKEFLAGS', 'MFLAGS', 'MAKEOVERRIDES']:
             self.env.pop(key, None)
         self.assertIsNone(shutil.which('docker', path=self.env['PATH']))
         source = self.init('template-remote')
@@ -60,6 +60,23 @@ class Scaffold(unittest.TestCase):
         (source / 'scripts/develop.sh').write_text('echo tooling\n')
         (source / 'src').mkdir()
         (source / 'src/Service.cs').write_text('// template source\n')
+        # Hand-authored identity fixture and golden output, independent of production code.
+        self.identity_files = {}
+        for identity in ['Template', 'User']:
+            api = 'src/GoalStats.' + identity + '.Api'
+            ctx = identity + 'DbContext'
+            self.identity_files[identity] = {
+                'GoalStats.'+identity+'.sln': 'GoalStats.'+identity+'.Api\n',
+                api+'/GoalStats.'+identity+'.Api.csproj': '<Project />\n',
+                api+'/Infrastructure/Database/'+ctx+'.cs': 'class '+ctx+' {}\n',
+                api+'/Infrastructure/Database/Migrations/'+ctx+'ModelSnapshot.cs': 'class '+ctx+'ModelSnapshot {}\n',
+                'tests/GoalStats.'+identity+'.Api.UnitTests/GoalStats.'+identity+'.Api.UnitTests.csproj': 'GoalStats.'+identity+'.Api\n',
+                'tests/GoalStats.'+identity+'.Api.IntegrationTests/GoalStats.'+identity+'.Api.IntegrationTests.csproj': 'GoalStats.'+identity+'.Api\n',
+                'tests/GoalStats.'+identity+'.Api.IntegrationTests/Infrastructure/Database/'+ctx+'Tests.cs': 'class '+ctx+'Tests {}\n',
+                'identity.md': 'goalstats-'+identity.lower()+'-api goalstats_'+identity.lower()+'_local\n',
+            }
+        for name, content in self.identity_files['Template'].items():
+            file=source/name; file.parent.mkdir(parents=True,exist_ok=True); file.write_text(content)
         self.source_pin = self.commit(source)
         target = self.init('destination-remote')
         (target / 'README.md').write_text('# ' + SERVICE + '\n')
@@ -67,7 +84,7 @@ class Scaffold(unittest.TestCase):
         self.placeholder = self.commit(target)
         self.parent = self.init('parent')
         for name in ['Makefile','scripts/workspace.sh','scripts/git-safety.sh','scripts/box.sh',
-                     'scripts/scaffold-service.sh','.gitignore','infra/.env.local.example','infra/.env.dev.example']:
+                     'scripts/scaffold-service.sh','scripts/scaffold-transform.py','.gitignore','infra/.env.local.example','infra/.env.dev.example']:
             dest = self.parent / name
             dest.parent.mkdir(exist_ok=True, parents=True)
             shutil.copyfile(SOURCE / name, dest)
@@ -76,7 +93,7 @@ class Scaffold(unittest.TestCase):
             'reference\tservice-template\t'+SOURCE_PATH+'\tnone\tnone\tnone\tnone\tnone\tnone\n'
             'active\tuser-service\t'+DEST_PATH+'\tnone\tnone\tnone\tnone\tnone\tnone\n')
         self.approvals = self.parent / 'config/scaffolds.tsv'
-        self.approvals.write_text('# service\tplaceholder-commit\n'+SERVICE+'\t'+self.placeholder+'\n')
+        self.approvals.write_text('# service\tplaceholder-commit\n'+SERVICE+'\t'+self.placeholder+'\tUser\n')
         for remote, path in [(source, SOURCE_PATH), (target, DEST_PATH)]:
             self.git(self.parent, 'submodule', 'add', '-q', str(remote), path)
         self.commit(self.parent)
@@ -102,12 +119,12 @@ class Scaffold(unittest.TestCase):
             elif path.is_file(): out[str(rel)] = (path.read_bytes(), stat.S_IMODE(path.stat().st_mode))
         return out
 
-    def invoke(self, dry=None, service=SERVICE, direct=False, env=None):
+    def invoke(self, dry=None, service=SERVICE, direct=False, env=None, domain="User"):
         if direct:
-            e = dict(env or self.env, SERVICE=service)
+            e = dict(env or self.env, SERVICE=service, DOMAIN=domain)
             if dry is not None: e['DRY_RUN'] = dry
             return self.cmd(self.parent, '/bin/bash', 'scripts/scaffold-service.sh', ok=False, env=e)
-        args = ['make', 'scaffold-service', 'SERVICE='+service]
+        args = ['make', 'scaffold-service', 'SERVICE='+service, 'DOMAIN='+domain]
         if dry is not None: args.append('DRY_RUN='+dry)
         return self.cmd(self.parent, *args, ok=False, env=env)
 
@@ -129,14 +146,17 @@ class Scaffold(unittest.TestCase):
 
     def approve_destination(self):
         self.placeholder = self.commit(self.dest)
-        self.approvals.write_text(SERVICE+'\t'+self.placeholder+'\n')
+        self.approvals.write_text(SERVICE+'\t'+self.placeholder+'\tUser\n')
         self.commit(self.parent)
 
     def test_success_exact_payload_and_identity(self):
         before = self.identity(self.dest), self.identity(self.parent)
         p = self.invoke(dry='false')
         self.assertEqual(0, p.returncode, p.stdout)
-        self.assertEqual(self.tree(self.src), self.tree(self.dest))
+        expected=self.tree(self.src)
+        for name in self.identity_files['Template']: del expected[name]
+        expected.update({name:(content.encode(),0o644) for name,content in self.identity_files['User'].items()})
+        self.assertEqual(expected, self.tree(self.dest))
         self.assertEqual(before, (self.identity(self.dest), self.identity(self.parent)))
         self.assertIn('Scaffold complete', p.stdout)
         self.assertFalse((self.parent/'.git/team-squared-scaffold-incomplete').exists())
@@ -228,7 +248,7 @@ class Scaffold(unittest.TestCase):
             path.unlink()
 
     def test_wrong_placeholder(self):
-        self.approvals.write_text(SERVICE+'\t'+'0'*40+'\n')
+        self.approvals.write_text(SERVICE+'\t'+'0'*40+'\tUser\n')
         self.commit(self.parent)
         self.refuse('Unresolved placeholder')
 
@@ -244,8 +264,8 @@ class Scaffold(unittest.TestCase):
             self.refuse()
 
     def test_registry_malformed(self):
-        valid=SERVICE+'\t'+self.placeholder+'\n'
-        for text in [valid+valid,SERVICE+' '+self.placeholder,valid.rstrip()+'\textra\n','../bad\t'+self.placeholder+'\n']:
+        valid=SERVICE+'\t'+self.placeholder+'\tUser\n'
+        for text in [valid+valid,SERVICE+' '+self.placeholder,valid.rstrip()+'\textra\n','../bad\t'+self.placeholder+'\tUser\n']:
             self.approvals.write_text(text);self.commit(self.parent);self.refuse()
 
     def test_missing_component_mapping(self):
@@ -273,7 +293,7 @@ class Scaffold(unittest.TestCase):
         for repo in [self.parent,self.src,self.dest]:
             gitdir=Path(self.git(repo,'rev-parse','--absolute-git-dir'))
             for marker in ['MERGE_HEAD','CHERRY_PICK_HEAD','REVERT_HEAD','rebase-merge','rebase-apply','sequencer','BISECT_START']:
-                path=gitdir/marker;path.write_text(self.placeholder+'\n')
+                path=gitdir/marker;path.write_text(self.placeholder+'\tUser\n')
                 self.refuse('operation in progress')
                 path.unlink()
 
@@ -362,6 +382,11 @@ class Scaffold(unittest.TestCase):
         recovery=Path((journal/'recovery-directory').read_text().strip())
         self.assertTrue((recovery/'completed.txt').read_text())
         self.assertTrue((recovery/'original/README.md').exists())
+        for name in ['source-manifest.tsv','mapping.tsv','transformed.tsv','policy.json','parent.identity','dest.identity','failed-phase.txt']:
+            self.assertTrue((recovery/name).is_file(),name)
+        self.assertIn(self.source_pin,(recovery/'policy.json').read_text())
+        self.assertIn('User',(recovery/'policy.json').read_text())
+        self.assertEqual('README.md\n',(recovery/'failed-phase.txt').read_text())
         self.refuse('Incomplete scaffold')
 
     def test_final_verification_failure(self):
@@ -484,7 +509,7 @@ class Scaffold(unittest.TestCase):
         valid=self.placeholder
         for row in [SERVICE+'\t'+valid[:12],SERVICE+'\t'+'z'*40,
                     'goalstats-unknown-service\t'+valid]:
-            self.approvals.write_text(row+'\n');self.commit(self.parent);self.refuse()
+            self.approvals.write_text(row+'\tUser\n');self.commit(self.parent);self.refuse()
 
     def test_control_characters(self):
         for value in ['goalstats-user\t-service','goalstats-user\x01-service','goalstats-user\r-service']:
@@ -493,7 +518,7 @@ class Scaffold(unittest.TestCase):
     def test_two_simultaneous_operations(self):
         entered=self.base/'archive-entered';release=self.base/'archive-release'
         env=self.wrapper('tar','touch "'+str(entered)+'"\nfor attempt in {1..200}; do\n [[ ! -e "'+str(release)+'" ]] || exec /usr/bin/tar "$@"\n sleep 0.1\ndone\nexit 17\n')
-        first=subprocess.Popen(['make','scaffold-service','SERVICE='+SERVICE,'DRY_RUN=true'],
+        first=subprocess.Popen(['make','scaffold-service','SERVICE='+SERVICE,'DOMAIN=User','DRY_RUN=true'],
                                cwd=self.parent,env=env,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
         try:
             deadline=time.monotonic()+15
@@ -509,6 +534,68 @@ class Scaffold(unittest.TestCase):
             release.touch()
             if first.poll() is None:
                 first.communicate(timeout=25)
+
+
+    def test_domain_validation_and_make_safety(self):
+        for domain in ['', 'Template', 'user', 'USER', 'User-Service', 'User_Service', 'User.Service', '../User', 'User$', 'User Service', 'Usér', 'U', 'Abcdefghijklmnop', 'User\n', '$(shell touch injected)', '`touch injected`']:
+            self.refuse('DOMAIN must', domain=domain)
+        self.assertFalse((self.parent/'injected').exists())
+
+    def test_domain_registry_mismatch(self):
+        self.refuse('DOMAIN differs',domain='Match')
+
+    def test_legacy_registry(self):
+        self.approvals.write_text(SERVICE+'\t'+self.placeholder+'\n')
+        self.commit(self.parent); self.refuse('three tab-separated')
+
+    def test_transformation_refusal_cleans_output(self):
+        (self.src/'bad.md').write_text('PrefixTemplateDbContext')
+        self.approve_source(); self.refuse('embedded')
+        self.assertEqual([],list(self.base.glob('team-squared-scaffold*')))
+        self.assertFalse((self.parent/'.git/team-squared-scaffold-incomplete').exists())
+
+    def test_python_unusable(self):
+        env=self.wrapper('python3','exit 1\n')
+        self.assertEqual(1,self.refuse('Python 3.9+',direct=True,env=env).returncode)
+        # Execute the real version probe with a simulated unsupported interpreter.
+        env=self.wrapper('python3', '''for arg in "$@"; do probe="$arg"; done
+exec /usr/bin/python3 -c 'import sys; sys.version_info=(3,8,0); exec(sys.argv[1])' "$probe"
+''')
+        self.assertEqual(1,self.refuse('Python 3.9+',direct=True,env=env).returncode)
+
+    def test_missing_python(self):
+        toolpath=self.base/'no-python'; toolpath.mkdir()
+        for name in ['dirname','git','tar','mktemp','mkdir','rmdir','rm','cp','chmod','find','sort','cmp','cat','tr']:
+            (toolpath/name).symlink_to(shutil.which(name,path=self.env['PATH']))
+        self.refuse('Missing required tool: Python',direct=True,env=dict(self.env,PATH=str(toolpath)))
+
+    def test_domain_dry_run_summary(self):
+        p=self.invoke(dry='true');self.assertEqual(0,p.returncode,p.stdout)
+        for text in ['SERVICE='+SERVICE,'DOMAIN=User',self.source_pin,self.placeholder,'feat/bootstrap','GoalStats.Template -> GoalStats.User','TemplateDbContext -> UserDbContext','goalstats-template -> goalstats-user','goalstats_template -> goalstats_user','RENAME GoalStats.Template.sln -> GoalStats.User.sln']:
+            self.assertIn(text,p.stdout)
+
+
+    def test_two_operations_during_transformation(self):
+        entered=self.base/'transform-entered';release=self.base/'transform-release'
+        env=self.wrapper('python3','for arg in "$@"; do\n case "$arg" in --source=*) touch "'+str(entered)+'"; for attempt in {1..200}; do [[ ! -e "'+str(release)+'" ]] || exec /usr/bin/python3 "$@"; sleep 0.1; done; exit 17 ;; esac\ndone\nexec /usr/bin/python3 "$@"\n')
+        first=subprocess.Popen(['make','scaffold-service','SERVICE='+SERVICE,'DOMAIN=User','DRY_RUN=true'],cwd=self.parent,env=env,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+        try:
+            deadline=time.monotonic()+15
+            while not entered.exists() and first.poll() is None and time.monotonic()<deadline: time.sleep(0.05)
+            self.assertTrue(entered.exists(),'Did not reach locked transformation')
+            self.refuse('Scaffold lock exists',dry='true')
+            release.touch();output,_=first.communicate(timeout=15)
+            self.assertEqual(0,first.returncode,output)
+        finally:
+            release.touch()
+            if first.poll() is None:first.communicate(timeout=25)
+
+    def test_transformed_ignore_compatibility(self):
+        (self.src/'.gitignore').write_text('.env\nbin/\ngoalstats-template-cache/\n')
+        self.approve_source()
+        (self.dest/'.gitignore').write_text('.env\nbin/\ngoalstats-template-cache/\n')
+        self.approve_destination()
+        self.refuse('drops or reorders')
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Exact tracked-file bootstrap; Bash 3.2, Git, tar and ordinary OS utilities only.
+# Exact tracked-file bootstrap; Bash 3.2, Git, tar, Python 3.9+ and ordinary OS utilities.
 set -euo pipefail
 export GIT_OPTIONAL_LOCKS=0 GIT_NO_LAZY_FETCH=1 GIT_ALLOW_PROTOCOL=''
 # Disable status helpers; no network, filters, checkout, or index writes are needed.
@@ -15,6 +15,7 @@ finish() {
   local code=$?
   trap - EXIT
   if [[ "$installing" == 1 && "$success" == 0 ]]; then
+    printf '%s\n' "$current_path" > "$scratch/failed-phase.txt" || true
     echo "Scaffold INCOMPLETE at: $current_path. No automatic rollback was attempted." >&2
     echo "Recovery directory: $scratch; operation indicator: $journal" >&2
     echo 'Inspect completed.txt, the manifest, and original placeholders. Preserve work and reconcile manually before removing the indicator. Rerun is refused.' >&2
@@ -33,13 +34,16 @@ trap finish EXIT
 trap 'operational "Interrupted during $current_path"' HUP INT TERM
 
 valid_service() { [[ "$1" =~ ^goalstats-[a-z0-9]+(-[a-z0-9]+)*-service$ ]]; }
-[[ $# == 0 ]] || fail 'No positional arguments; use SERVICE and DRY_RUN.'
-service=${SERVICE-}; dry=${DRY_RUN-false}
+[[ $# == 0 ]] || fail 'No positional arguments; use SERVICE, DOMAIN and DRY_RUN.'
+service=${SERVICE-}; domain=${DOMAIN-}; dry=${DRY_RUN-false}
 valid_service "$service" || fail 'SERVICE must be an approved goalstats-<name>-service token.'
 [[ "$dry" == true || "$dry" == false ]] || fail 'DRY_RUN accepts exactly true or false.'
 for tool in git tar mktemp mkdir rmdir rm cp chmod find sort cmp cat dirname tr; do
   command -v "$tool" >/dev/null || operational "Missing required tool: $tool"
 done
+command -v python3 >/dev/null || operational 'Missing required tool: Python 3.9+ (python3).'
+python3 -I -B -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' || operational 'Python 3.9+ is required and must be usable.'
+python3 -I -B scripts/scaffold-transform.py --domain="$domain"
 parent_sha=$(git rev-parse --verify HEAD)
 parent_git=$(git rev-parse --absolute-git-dir)
 journal="$parent_git/team-squared-scaffold-incomplete"
@@ -87,11 +91,17 @@ submodule_match() {
 }
 component_match "$source_path" reference
 submodule_match "$source_path"; source_sha=$matched_sha; source_url=$matched_url
-seen=$'\n'
+seen=$'\n'; domains=$'\n'
 while IFS= read -r row; do
   [[ -n "$row" && "$row" != \#* ]] || continue
-  [[ "$row" == *$'\t'* ]] || fail 'Approval rows require exactly two tab-separated fields.'
-  name=${row%%$'\t'*}; sha=${row#*$'\t'}
+  [[ "$row" == *$'\t'*$'\t'* ]] || fail 'Approval rows require exactly three tab-separated fields.'
+  name=${row%%$'\t'*}; rest=${row#*$'\t'}
+  sha=${rest%%$'\t'*}; approved_domain=${rest#*$'\t'}
+  [[ "$approved_domain" != *$'\t'* ]] || fail 'Approval rows require exactly three tab-separated fields.'
+  python3 -I -B scripts/scaffold-transform.py --domain="$approved_domain"
+  lower_domain=$(printf '%s' "$approved_domain" | tr '[:upper:]' '[:lower:]')
+  [[ "$domains" != *$'\n'"$lower_domain"$'\n'* ]] || fail 'Duplicate derived domain identity.'
+  domains="$domains$lower_domain"$'\n'
   valid_service "$name" && [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || fail 'Malformed approval row.'
   [[ "$seen" != *$'\n'"$name"$'\n'* ]] || fail "Duplicate approval: $name"
   seen="$seen$name"$'\n'
@@ -103,6 +113,7 @@ while IFS= read -r row; do
   [[ -e "$root/$path/.git" ]] || fail "Approved destination is uninitialized: $path; use make setup separately."
   git -C "$root/$path" cat-file -e "$sha^{commit}" 2>/dev/null || fail "Unresolved placeholder commit for $name"
   if [[ "$name" == "$service" ]]; then
+    [[ "$domain" == "$approved_domain" ]] || fail 'DOMAIN differs from approved registry DOMAIN.'
     dest_path=$path; dest_sha=$matched_sha; dest_url=$matched_url; approved=$sha
   fi
 done <<< "$approvals"
@@ -194,8 +205,9 @@ ignore_rules() {
     [[ -z "$line" || "$line" == \#* ]] || printf '%s\n' "$line"
   done
 }
+ignore_check() {
 git -C "$dest" show "$approved:.gitignore" | ignore_rules > "$scratch/dest-rules"
-git -C "$src" show "$source_sha:.gitignore" | ignore_rules > "$scratch/source-rules"
+cat "$scratch/output/.gitignore" | ignore_rules > "$scratch/source-rules"
 if ! cmp -s "$scratch/dest-rules" "$scratch/source-rules"; then
   rules=(); while IFS= read -r rule; do
     [[ "$rule" != '!'* ]] || fail 'Different ignore files with destination negations require manual reconciliation.'
@@ -213,6 +225,7 @@ if ! cmp -s "$scratch/dest-rules" "$scratch/source-rules"; then
   done < "$scratch/source-rules"
   (( next == ${#rules[@]} )) || fail 'Template drops or reorders destination ignore rules.'
 fi
+}
 
 payload_error() {
   if [[ "$installing" == 1 ]]; then operational "$*"; else fail "$*"; fi
@@ -262,6 +275,19 @@ tar -xpf "$scratch/template.tar" -C "$scratch/payload"
 verify_payload "$scratch/payload"
 [[ -f "$scratch/payload/README.md" && -f "$scratch/payload/.gitignore" ]] || fail 'Template must supply both placeholder replacements.'
 
+cp "$scratch/manifest.tsv" "$scratch/source-manifest.tsv"
+current_path='identity transformation'
+printf 'SERVICE=%s\n' "$service"
+python3 -I -B scripts/scaffold-transform.py --domain="$domain" --source="$scratch/payload" --source-manifest="$scratch/source-manifest.tsv" --output="$scratch/output" --evidence="$scratch" --source-sha="$source_sha"
+cp "$scratch/transformed.tsv" "$scratch/manifest.tsv"
+: > "$scratch/paths"
+while IFS=$'\t' read -r mode hash path; do
+  validate_path "$path"
+  printf '%s\n' "$path" >> "$scratch/paths"
+done < "$scratch/manifest.tsv"
+verify_payload "$scratch/output"
+ignore_check
+
 printf 'Scaffold (DRY_RUN=%s)\nSource: %s @ %s\nDestination: %s @ %s [%s]\n' "$dry" "$source_path" "$source_sha" "$dest_path" "$dest_sha" "$branch"
 while IFS= read -r path; do
   case "$path" in README.md|.gitignore) printf '  REPLACE approved placeholder %s\n' "$path" ;; *) printf '  ADD %s\n' "$path" ;; esac
@@ -287,7 +313,7 @@ printf '%s\n' "$scratch" > "$journal/recovery-directory"
 while IFS=$'\t' read -r mode hash path; do
   current_path=$path
   mkdir -p "$(dirname "$dest/$path")"
-  cp "$scratch/payload/$path" "$dest/$path"
+  cp "$scratch/output/$path" "$dest/$path"
   if [[ "$mode" == 100755 ]]; then chmod 755 "$dest/$path"; else chmod 644 "$dest/$path"; fi
   printf '%s\n' "$path" >> "$scratch/completed.txt"
 done < "$scratch/manifest.tsv"
@@ -301,4 +327,4 @@ rm "$journal/recovery-directory"
 rmdir "$journal"
 success=1
 printf 'Scaffold complete from %s. Child files are intentionally unstaged; parent pin and Git identity are unchanged.\n' "$source_sha"
-echo 'Review child git status --short and git diff, including untracked files. Adapt identity/migrations separately; Item/Action are unchanged. No runtime certification was performed.'
+echo 'Review child git status --short and git diff, including untracked files. Identity transformation only; Item/Action and migration operations are unchanged. No runtime certification was performed.'

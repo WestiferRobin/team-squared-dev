@@ -36,18 +36,22 @@ committing: `cd <child>` then `git switch -c <feature-branch>`.
 
 ## Bootstrap an approved service
 
-`make scaffold-service SERVICE=goalstats-user-service DRY_RUN=true` previews copying
-exact tracked files from the parent-pinned reference template into an approved
+`make scaffold-service SERVICE=goalstats-user-service DOMAIN=User DRY_RUN=true`
+previews transforming identity in exact tracked files from the parent-pinned reference template into an approved
 placeholder. Omit `DRY_RUN=true` to install after a successful preview. The destination
 must already be clean on a `feat/*` branch at its approved placeholder commit. Parent
 changes, including untracked TODO.md, block the command; unrelated child work does
-not. No Docker or network is required after setup.
+not. Python 3.9+ is required. No Docker or network is required after setup.
 
 Scaffolding preserves the destination Git repository and leaves unstaged child
-changes. It does not rename projects, remove migrations, implement domains, or
-certify a service. A second invocation refuses. See the [scaffold contract and
-beginner workflow](docs/DEVELOPMENT.md#service-scaffolding) before use. The tool passed
-actual-template certification in disposable workspaces. Real-service use still requires resolving local safety blockers and reviewing a successful preview.
+changes. It maps GoalStats.Template.* and TemplateDbContext to GoalStats.<DOMAIN>.* and
+<DOMAIN>DbContext. Item/Action remain examples; no business-domain generation or
+runtime certification occurs. DOMAIN is required and must match registry approval. A second
+invocation refuses. See the [scaffold contract and beginner workflow](docs/DEVELOPMENT.md#service-scaffolding)
+before use. The generated User skeleton passed disposable build, EF, test and
+LOCAL/DEV runtime certification. It still contains example Item/Action behavior,
+not real User functionality. Real-service use requires resolving local safety
+blockers and reviewing a successful preview in a separate explicit task.
 
 ## Repositories
 
@@ -68,7 +72,7 @@ but excluded from normal build/run/migrate/test/smoke and Compose.
 make help
 make setup
 make sync
-make scaffold-service SERVICE=<approved-service> [DRY_RUN=true]
+make scaffold-service SERVICE=<approved-service> DOMAIN=<approved-domain> [DRY_RUN=true]
 make build [ENV=local|dev]
 make run [ENV=local|dev]
 make stop [ENV=local|dev]

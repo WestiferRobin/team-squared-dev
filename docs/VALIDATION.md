@@ -6,9 +6,9 @@ verification passed as part of its approved baseline; this parent adoption does
 not rerun standalone template certification. App standalone manual verification
 remains pending and is not certified here.
 
-## Approved integration
+## Earlier approved workspace integration
 
-Only these two gitlinks advance:
+The earlier workspace integration advanced these two gitlinks (historical evidence):
 
 | Component | Previous pin | Approved pin |
 | --- | --- | --- |
@@ -23,10 +23,10 @@ its registry, Compose definitions, runtime guards, and reference/docs exclusions
 
 ## Reproducible local Git fixtures
 
-From this repository, with Python 3 available for the test harness only:
+From this repository, with Python 3.9+ available:
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p '*_test.py'
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'workspace_test.py'
 ```
 
 The suite creates real disposable parent/child repositories and local remotes.
@@ -149,71 +149,130 @@ health/connectivity, smoke, and active-suite certification remain deferred.
 
 GOALSTATS-USER-SERVICE REMAINS RUNTIME-PENDING
 
-## Scaffold command release certification
+## DOMAIN-aware scaffold implementation validation
 
-Run the dedicated fixture suite independently of public active-service tests:
+Run the independent fixture suites (Python 3.9+ is now also a scaffold prerequisite):
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'scaffold_service_test.py'
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'workspace_test.py'
+python3 -B tests/scaffold_transform_test.py
+python3 -B tests/scaffold_service_test.py
+python3 -B tests/workspace_test.py
 ```
 
-Fixtures create disposable real repositories, approved placeholder commits, and
-local remotes; they never scaffold the real user service. The scaffold helper has
-no runtime Python dependency. Tests exercise exact payload and executable modes,
-Git identity/index preservation, literal Make inputs, preview, source/destination
-safety, approval metadata, ignore compatibility, archive attributes, forbidden
-artifacts, unrelated child work, repeat refusal, and operational recovery.
-Fixture-scoped command wrappers inject failures; no production failure-injection
-option is exposed. Docker is absent from fixture PATH and Git transport is disabled
-inside the scaffold helper, including lazy-fetch prevention.
+The source is the certified `GoalStats.Template.*` / `TemplateDbContext` template at
+`8d05ddfb5d2ece712f26000efcf38408ff33bfe4`. Only this parent template pin changes. The approved registry row is
+`goalstats-user-service<TAB>70c77c692993fc18e9f484bf22266a15288c0541<TAB>User`.
 
-Certification results on macOS Bash 3.2.57 / GNU Make 3.81:
+```bash
+make scaffold-service SERVICE=goalstats-user-service DOMAIN=User DRY_RUN=true
+```
 
-- Scaffold suite: **58 passed, 0 failed, 0 skipped, 58 total**.
-- Existing workspace regression suite: **19 passed, 0 failed, 0 skipped, 19 total**.
-- Shell syntax checks, Make help, and `git diff --check`: passed.
-- The real user service was not scaffolded. Its source/pin and all other child pins
-  remain unchanged; TODO.md retains its recorded SHA-256.
+DOMAIN is required and must match registry approval. Valid forms include User,
+Match, Team and PlayerStats; the latter derives playerstats without word splitting.
+Generated identity is `GoalStats.<DOMAIN>.*` / `<DOMAIN>DbContext`. This is identity
+transformation only: Item/Action remain examples; no business-domain generation.
 
-Shared Git checks are extracted into scripts/git-safety.sh. Existing workspace
-fixtures include that library and must retain all 19 passing setup/sync cases.
-Runtime box/Compose files, .gitmodules, all pins, and child source stay unchanged.
+Fixtures preserve all existing Git safety scenarios and use independently authored
+expected output. Source export must equal the committed source; destination must
+equal the expected transformed paths, bytes and modes. Tests cover boundaries,
+opaque files, text encoding, collisions, required anchors, failure cleanup/recovery,
+Python availability, literal Make inputs and concurrency. Docker is absent from
+fixture PATH; scaffold Git transport is disabled, including lazy fetch.
 
-Actual-template certification used disposable parent clones populated from locally
-available child Git objects, with canonical child origins and the parent's exact
-pins. No real child was fetched or updated. Source:
-`backend/template-goalstats-service` at
-`e89164842ca2c0f2954919a38da3ed4924d5f3ac`; destination baseline:
-`backend/goalstats-user-service` at
-`70c77c692993fc18e9f484bf22266a15288c0541`.
+Disposable candidates verify the newly pinned actual template without running the
+command against the real user service. Generated User build, EF and runtime
+certification results are recorded below. A successful install intentionally leaves the
+child dirty and unstaged. Review, then commit/publish the child and deliberately
+adopt its approved pin later; the scaffold does neither.
 
-Both preview and installation passed with Docker absent and Git transports disabled
-after setup. All **139 tracked files** matched the approved template's paths, bytes,
-and modes; migrations, Item/Action, and template identities remained intact. Git
-administration stayed destination-owned: pointer/resolution, origin/config, branch,
-HEAD, refs/history, and index were unchanged. Parent HEAD, index, and gitlinks were
-unchanged; parent status showed dirty child content with nothing staged.
+Setup/sync behavior and active runtime topology remain unchanged. Parent build,
+run, migrate, test and smoke must still refuse the runtime-pending user service.
+The real child stays at its placeholder SHA; TODO.md is preserved. No real scaffold,
+staging, commit or push is part of this implementation.
 
-Actual and dry-run repeats refused both before and after a disposable child commit,
-without overwriting, deleting, or staging anything. Fixture tests additionally cover
-missing offline objects, archive/extraction/temp failures, partial-install and final
-verification failures, malformed approvals, hostile inputs, and simultaneous lock
-contention. Recovery evidence survives partial writes and prevents blind retries.
+Recorded implementation checks on macOS Bash 3.2.57 / GNU Make 3.81:
 
-The documented setup → feature branch → preview → install → child status/diff
-sequence was exercised in two independent disposable workspaces. This is a scripted beginner
-walkthrough, not a study with human participants. Output exposes exact identities,
-file additions/replacements, and the expected unstaged child work; raw scripts,
-approval metadata, and Git diffs remain directly inspectable.
+- Transformer suite: **25 passed, 0 failed, 0 skipped, 25 total**.
+- Scaffold suite: **67 passed, 0 failed, 0 skipped, 67 total**.
+- Workspace suite: **19 passed, 0 failed, 0 skipped, 19 total**.
+- Python syntax, Bash syntax, Make help and whitespace checks passed.
+- `/usr/bin/python3` is **3.9.6**; missing/unusable Python and simulated Python 3.8 refusal are fixture-tested.
+- Actual-template preview and installation passed in a disposable candidate with
+  Docker absent. All **139 files** matched independently calculated transformed
+  paths, bytes and modes; parent/destination Git identity was preserved.
+- Migration filenames retain `20260908043250_InitialCreate`; all non-token bytes,
+  including schema operations, routes, package versions and Item/Action, match.
+- All five real runtime guards refused the incomplete active User contract.
+- Only the template pin advances from `e89164842ca2c0f2954919a38da3ed4924d5f3ac`
+  to `8d05ddfb5d2ece712f26000efcf38408ff33bfe4`, verified against canonical remote
+  master. The clean real User placeholder, other child pins and TODO.md are preserved.
 
-All five real runtime guard checks (`build`, `run`, `migrate`, `test`, `smoke`)
-refused the runtime-pending user service before partial execution, as required.
-No full-stack or destination-service runtime certification is implied.
+REAL GOALSTATS-USER-SERVICE REMAINS UNSCAFFOLDED
 
-The real dry run was **NOT RUN**: untracked user-owned TODO.md and the destination's
-detached HEAD block it. The uncommitted parent implementation also blocked it during
-certification. These rules were not bypassed; no real feature branch was created.
-Resolve prerequisites and perform the real preview before scaffolding in a separate
-explicit task. Windows remains unverified. No production safety changes were needed
-by certification; five fixture cases and documentation updates complete the release.
+
+## Generated User release certification (Prompt 4)
+
+The candidate parent was cloned into a fresh disposable checkout. `make setup`
+retrieved the actual canonical child pins independently of the active developer
+worktrees. The approved template was
+`8d05ddfb5d2ece712f26000efcf38408ff33bfe4`; the disposable User destination began at
+`70c77c692993fc18e9f484bf22266a15288c0541` on `feat/architecture-prototype`.
+
+Production preview and installation passed. An independent byte/path comparison
+mapped all 139 source entries exactly once, with zero reserved template tokens.
+Git pointer/resolution, origin/config, branch, HEAD, refs/history and index were
+preserved, as were parent HEAD/index and destination gitlink. Both actual and
+preview repeats refused after uncommitted generation and after a disposable child
+commit. A separate fresh beginner walkthrough exercised setup, branch creation,
+preview, installation, child status and diff; nothing was staged by the command.
+
+The parent suites passed with no skips: 25 transformer, 67 scaffold and 19 workspace
+tests (111 total). All original 58 scaffold safety scenarios remain represented.
+The fresh candidate also passed its 25 transformer and 67 scaffold tests. Coverage
+includes transformation/collision refusals, archive mismatch, partial-install and
+final-verification failures, recovery evidence and concurrency during transformation.
+
+Generated-service checks passed:
+
+- `GoalStats.User.sln` build: **0 warnings, 0 errors**; API Release publish and Docker
+  development/runtime builds passed.
+- `UserDbContext`; exactly `20260908043250_InitialCreate`; no pending model changes.
+  Fresh PostgreSQL migration application and repeat/current application passed.
+- Unit: **304 passed, 0 failed, 0 skipped**.
+- Integration: **271 passed, 0 failed, 0 skipped**.
+- Full suite: **575 passed, 0 failed, 0 skipped, 575 total**.
+- Documented Make setup/build/migrate/run/stop/restart workflows passed for LOCAL
+  (Development, source watch) and DEV (Staging, built non-root runtime, no source
+  mount). Unique project names and host ports isolated these runs.
+- Health/readiness, Swagger JSON title `GoalStats.User.Api`, UI initialization label
+  `GoalStats.User.Api v1`, Item/Action CRUD, cascade and Redis cache invalidation
+  passed. The UI label is served in `/swagger/index.js`.
+- Identity-only comparison preserves migration IDs, Up/Down/schema operations,
+  routes, DTOs/enums, package versions and non-token bytes. HTTP contracts and
+  Item/Action behavior remain template-equivalent; no User functionality is generated.
+- Generated `./scripts/smoke.sh` passed and removed its owned resources.
+
+The real parent runtime guards still refuse the incomplete active User contract.
+The real User repository was never scaffolded, branched or modified. TODO.md is
+preserved and excluded from publication. Only the approved template gitlink changes;
+User, app, wiki and RoadToTheFinal retain their recorded pins.
+
+The unmodified generated `python3 scripts/certify-workflows.py` passed LOCAL/DEV
+CRUD/cache checks, two persistence cycles in each mode, normal test/smoke execution,
+two controlled failures (exit 73) and SIGTERM (exit 143) for each script. Owned
+resources were removed, LOCAL/DEV sentinel rows survived, and pre-existing Docker
+containers/states, networks and volumes were preserved. An additional controlled
+User test failure preserved a disposable template-named container without restart
+and an unrelated sentinel volume. Those sentinels were then explicitly removed.
+No certification image tags remained. All candidate resources/evidence are
+confined to disposable storage; no template or real User source was edited.
+
+No production fixes were required by certification. The only harness correction
+was checking the Swagger UI label in its separate initialization script rather
+than assuming the label appeared directly in the HTML document.
+
+DOMAIN-AWARE SCAFFOLDING READY FOR REAL GOALSTATS USER SERVICE
+
+Resolve real-workspace prerequisites, create `feat/architecture-prototype` inside
+the User service, and run the real DOMAIN=User preview/scaffold only as a separate
+explicit task. This certification does not perform that action.

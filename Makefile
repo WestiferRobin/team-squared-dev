@@ -7,8 +7,9 @@ export ENV PROJECT
 DRY_RUN ?= false
 # Freeze literal command-line values; never expand user Make expressions.
 override SERVICE := $(value SERVICE)
+override DOMAIN := $(value DOMAIN)
 override DRY_RUN := $(value DRY_RUN)
-export SERVICE DRY_RUN
+export SERVICE DOMAIN DRY_RUN
 .PHONY: help setup sync scaffold-service build run stop logs migrate test smoke
 help:
 	@printf '%s\n' \
@@ -17,7 +18,7 @@ help:
 	  '  make help                    Show scope and commands' \
 	  '  make setup                   Prepare this checkout and missing env files; no Docker' \
 	  '  make sync                    Fast-forward parent master; synchronize approved pins; no Docker' \
-	  '  make scaffold-service SERVICE=<service>  Copy pinned template into approved placeholder' \
+	  '  make scaffold-service SERVICE=<service> DOMAIN=<Domain>  Transform pinned template identity' \
 	  '    Requires clean feat/* destination branch. Preview with DRY_RUN=true.' \
 	  '' 'FULL STACK' \
 	  '  make build [ENV=local|dev]    Build every active image' \

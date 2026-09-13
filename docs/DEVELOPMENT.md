@@ -87,7 +87,7 @@ commit/publish there. App standalone manual runtime verification remains pending
 Wiki edits do not change the parent pin until an approved wiki commit is integrated.
 
 For the upcoming user-service bootstrap, the tracked template source is
-`backend/template-goalstats-service` at `e89164842ca2c0f2954919a38da3ed4924d5f3ac`;
+`backend/template-goalstats-service` at `8d05ddfb5d2ece712f26000efcf38408ff33bfe4`;
 the destination remains `backend/goalstats-user-service` at
 `70c77c692993fc18e9f484bf22266a15288c0541`. Create the destination feature branch
 before a later tracked export and implementation. Pin adoption performs neither.
@@ -111,20 +111,43 @@ needed; setup/sync intentionally refuse an off-pin development checkout.
 The parent owns one bootstrap command:
 
 ```bash
-make scaffold-service SERVICE=goalstats-user-service
-make scaffold-service SERVICE=goalstats-user-service DRY_RUN=true
+make scaffold-service SERVICE=goalstats-user-service DOMAIN=User
+make scaffold-service SERVICE=goalstats-user-service DOMAIN=User DRY_RUN=true
 ```
 
-SERVICE is required. DRY_RUN defaults to false and accepts exactly `true` or `false`;
+SERVICE and DOMAIN are required. DRY_RUN defaults to false and accepts exactly `true` or `false`;
 an explicitly empty value is invalid. There are no force, confirmation, source, or
 destination overrides. The helper exits 0 on success, 2 on validation/safety refusal,
 and 1 on operational failure; GNU Make reports its own nonzero recipe-failure code.
 
-The two-column `config/scaffolds.tsv` explicitly approves a service and placeholder
-commit. Committed component metadata supplies its active backend role, and committed
+The exactly three-column `config/scaffolds.tsv` approves service, full placeholder
+commit SHA, and case-sensitive DOMAIN, separated by tabs. Legacy rows are refused. Committed component metadata supplies its active backend role, and committed
 `.gitmodules` supplies the canonical URL. The source is always the current parent's
 exact `backend/template-goalstats-service` gitlink. No latest branch selection, fetch,
 setup, or sync is performed. Setup must already have initialized the repositories.
+
+DOMAIN must match `^[A-Z][a-z0-9]+([A-Z][a-z0-9]+)*$`, contain 2–15 ASCII
+characters, and cannot be Template. Invalid input is never normalized or inferred.
+User, Match, Team and PlayerStats are valid forms; only User is currently approved.
+PlayerStats derives `goalstats-playerstats` and `goalstats_playerstats`, without splitting.
+
+Exactly four reserved families are transformed simultaneously and case-sensitively:
+`GoalStats.Template` → `GoalStats.<DOMAIN>`, `TemplateDbContext` → `<DOMAIN>DbContext`,
+`goalstats-template` → `goalstats-<lowercase-domain>`, and
+`goalstats_template` → `goalstats_<lowercase-domain>`. Unexpected embeddings refuse.
+Generic Template, Service, Api and GoalStats prose is unchanged. Swagger follows the
+namespace identity and existing ` v1` label convention.
+
+After exact export verification, Python checks required solution/project/context/
+snapshot/test anchors, calculates every path and rejects duplicate, case-insensitive,
+file/directory, traversal, device-name and trailing-dot collisions. It transforms into
+a separate temporary tree and verifies a fresh manifest and zero reserved identities.
+The source export and template child are never edited. Only UTF-8 `.cs`, `.csproj`,
+`.sln`, `.json`, `.yml`, `.yaml`, `.md`, `.sh`, `.py`, and exact Dockerfile, Makefile,
+.gitignore, .dockerignore, .env.example names are transformable. BOM, CRLF/LF,
+final-newline state, executable mode and all non-token bytes are preserved. NUL or
+invalid UTF-8 text refuses. Opaque files remain identical; identity in their bytes
+or paths refuses. No exported code executes.
 
 Only the parent, template, and destination receive relevant safety checks. Unrelated
 child dirty/off-pin state is allowed, but parent staged gitlink changes are refused.
@@ -141,7 +164,7 @@ identical rule lists pass; otherwise destination positive rules must remain in
 order, destination negations are refused, and new template negations are limited
 to `!.env.example` when it does not undo a destination exclusion. Comments and empty
 lines do not affect comparison. Custom rules requiring reconciliation cause refusal.
-The template ignore file is copied byte-for-byte; there is no automatic merge.
+Compatibility is checked against the final transformed ignore file; there is no automatic merge.
 
 The helper archives the exact local commit into private temporary storage, extracts
 it there, and verifies paths, raw blob hashes, and executable bits against its Git
@@ -154,7 +177,7 @@ tracked. Root `.env.example`, Docker configuration, SQL source, and migrations a
 allowed. Ignored source files never enter the tracked-file archive.
 
 Dry run performs the same checks and temporary export verification, prints exact
-source/destination identities and additions/replacements, and changes no repository
+SERVICE, DOMAIN, source/destination identities, four mappings, renames and additions/replacements, and changes no repository
 files, refs, index, or configuration. It is a preview, not a reservation: actual
 installation revalidates the repositories and feature branch before writing.
 
@@ -171,7 +194,9 @@ and untracked new source files. This is expected. Do not run setup/sync to disca
 
 Installation is not atomic. Pre-install failures clean up owned temporary files
 without changing the destination. Once installation starts, a failure preserves a
-recovery directory containing original placeholders, manifest, and completed.txt,
+recovery directory containing source SHA, DOMAIN, policy version, source manifest,
+source-to-output mapping, transformed manifest, original placeholders, Git identity,
+completed.txt and failed-phase.txt,
 and records its path in the parent's Git directory under
 `team-squared-scaffold-incomplete`. The error identifies the failed path/phase.
 Inspect and preserve the resulting work; reconcile deliberately before removing the
@@ -187,11 +212,11 @@ git -C backend/goalstats-user-service \
   switch -c feat/architecture-prototype
 
 make scaffold-service \
-  SERVICE=goalstats-user-service \
+  SERVICE=goalstats-user-service DOMAIN=User \
   DRY_RUN=true
 
 make scaffold-service \
-  SERVICE=goalstats-user-service
+  SERVICE=goalstats-user-service DOMAIN=User
 
 cd backend/goalstats-user-service
 git status --short
@@ -199,10 +224,10 @@ git diff
 ```
 
 Resolve parent safety blockers first. Review untracked files using `git status`;
-`git diff` alone does not display them. Subsequent implementation renames/adapts the
-template to GoalStats.UserService, removes copied migration artifacts, and preserves
-Item/Action until later domain prompts. Scaffolding itself leaves all template
-identity, migrations, Item/Action, source, and tests unchanged.
+`git diff` alone does not display them. Scaffolding transforms identity only.
+Item/Action remain examples; business-domain generation is outside this command.
+Migration IDs, Up/Down operations, routes, DTO names and SQL tables remain unchanged.
+Do not delete migrations as part of identity adaptation.
 
 Commit and publish reviewed implementation inside the child feature branch. Only
 later integrate an approved published commit through a deliberate parent gitlink
@@ -210,8 +235,9 @@ update. Scaffolding never stages that pointer. The reference template remains
 excluded from normal active runtime/testing.
 
 Runtime requirements are Git, Bash, tar, and ordinary shell utilities, with GNU Make
-3.81+ for the public interface. No Python, rsync, Docker, Compose, or network is
-required by scaffolding. macOS Bash 3.2 is the validation target; WSL is a candidate
+3.81+ for the public interface, plus Python 3.9+ (standard library only). Missing or
+unsupported Python fails before destination writes. No packages, Docker, Compose, or
+network are required by scaffolding. macOS Bash 3.2 is the validation target; WSL is a candidate
 with the same tools. Git Bash requires verified Make, filenames, and executable-bit
 behavior. Native PowerShell and Windows are not certified.
 
