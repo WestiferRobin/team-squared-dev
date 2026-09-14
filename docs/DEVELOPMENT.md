@@ -87,7 +87,7 @@ commit/publish there. App standalone manual runtime verification remains pending
 Wiki edits do not change the parent pin until an approved wiki commit is integrated.
 
 For the upcoming user-service bootstrap, the tracked template source is
-`backend/template-goalstats-service` at `8d05ddfb5d2ece712f26000efcf38408ff33bfe4`;
+`backend/template-goalstats-service` at `f5c1c9d652d74ce11bcc381df4155027ec5a713e`;
 the destination remains `backend/goalstats-user-service` at
 `70c77c692993fc18e9f484bf22266a15288c0541`. Create the destination feature branch
 before a later tracked export and implementation. Pin adoption performs neither.
@@ -107,6 +107,24 @@ There is no automated upgrade command. Use a separate integration checkout when
 needed; setup/sync intentionally refuse an off-pin development checkout.
 
 ## Service scaffolding
+
+The selected template uses this testing philosophy:
+
+UNIT TESTS FOLLOW LOGIC
+
+INTEGRATION TESTS FOLLOW BOUNDARIES
+
+SMOKE TESTS FOLLOW BUILT SYSTEM
+
+Controllers are integration-only. The certified baseline is 260 unit and 276
+integration tests; DOMAIN transformation must preserve discovery. See the
+[template testing guide](../backend/template-goalstats-service/docs/TESTING.md) for
+placement rules. Generated services remain Item/Action skeletons, without User
+business or authentication behavior.
+
+The pinned template README still describes DOMAIN-aware scaffolding as planned.
+That historical wording is copied unchanged apart from identity tokens; this parent
+guide defines the available scaffold command.
 
 The parent owns one bootstrap command:
 

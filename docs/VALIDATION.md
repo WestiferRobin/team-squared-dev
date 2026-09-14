@@ -149,7 +149,7 @@ health/connectivity, smoke, and active-suite certification remain deferred.
 
 GOALSTATS-USER-SERVICE REMAINS RUNTIME-PENDING
 
-## DOMAIN-aware scaffold implementation validation
+## Historical DOMAIN-aware scaffold implementation validation
 
 Run the independent fixture suites (Python 3.9+ is now also a scaffold prerequisite):
 
@@ -210,7 +210,7 @@ Recorded implementation checks on macOS Bash 3.2.57 / GNU Make 3.81:
 REAL GOALSTATS-USER-SERVICE REMAINS UNSCAFFOLDED
 
 
-## Generated User release certification (Prompt 4)
+## Historical generated User release certification (Prompt 4)
 
 The candidate parent was cloned into a fresh disposable checkout. `make setup`
 retrieved the actual canonical child pins independently of the active developer
@@ -276,3 +276,63 @@ DOMAIN-AWARE SCAFFOLDING READY FOR REAL GOALSTATS USER SERVICE
 Resolve real-workspace prerequisites, create `feat/architecture-prototype` inside
 the User service, and run the real DOMAIN=User preview/scaffold only as a separate
 explicit task. This certification does not perform that action.
+
+## Test-aligned template adoption and generated User certification
+
+The selected template advances from
+`8d05ddfb5d2ece712f26000efcf38408ff33bfe4` to
+`f5c1c9d652d74ce11bcc381df4155027ec5a713e`, the exact certified/published
+Prompt 2 commit. The earlier 304/271/575 results above are historical.
+The current certified baseline is **260 unit / 276 integration / 536 total**.
+
+A disposable parent candidate carried this pin and current parent metadata. A
+fresh clone of that candidate ran `make setup` against canonical child remotes.
+Only its exact User placeholder at
+`70c77c692993fc18e9f484bf22266a15288c0541` received
+`feat/architecture-prototype`. Production DOMAIN=User preview and installation
+passed. An independent literal byte/path transformation verified all **140 files**,
+including modes, one-to-one path mapping, no missing/extra files and zero reserved
+template tokens. Dry run changed no repository files. Installation preserved Git
+metadata, origin, branch, HEAD/history, index and the parent destination gitlink.
+Both preview and actual repeats refused after dirty generation and after a
+disposable child commit.
+
+The working parent and fresh candidate each passed **25 transformer / 67 scaffold /
+19 workspace tests**, with no failures or skips. No transformer, scaffold or runtime
+implementation changed; existing safety scenarios remain intact. Real parent
+build/run/migrate/test/smoke all refused the incomplete active User contract before
+partial execution. No real User scaffold or dry run was performed.
+
+Generated architecture preserves integration-only controllers, direct DTO/enum/
+exception-class/model/mapper/service unit coverage, real framework/provider
+integration and linked pure test support. Startup, Fixtures and FixtureTests retain
+separate responsibilities. No cosmetic mirrored suites were introduced.
+
+Generated User validation passed:
+
+- Unit **260**, integration **276**, full **536**; zero failures/skips, exact agreement
+  with the certified template and individual suite discovery.
+- `GoalStats.User.sln` build: **0 warnings / 0 errors**; API publish succeeded.
+- `UserDbContext`, migration `20260908043250_InitialCreate`, no pending model changes;
+  initial and repeated PostgreSQL migration application succeeded.
+- Public Make setup/build/migrate/run/stop/restart in LOCAL Development and DEV
+  Staging, including built DEV runtime without source mounts, User Swagger identity,
+  health/readiness, Item/Action behavior, Redis invalidation and persistence.
+- Existing smoke and workflow scripts: normal runs, two controlled failures per
+  script, SIGTERM cleanup, two LOCAL/DEV persistence cycles and preserved sentinel
+  rows. No generated production/schema/HTTP/cache changes beyond identity tokens.
+
+Resource review found unchanged user-created networks, volumes and image inventory,
+no pre-existing containers, and no certification-owned resources left. Docker's
+built-in `bridge` ID changed from `51c3ac11f33e` to `f8bfb4ab272b` near the first
+unit tooling build; no certification command targeted it. The subsequent complete
+workflow certification preserved its before/after inventory, including that bridge.
+This environmental observation is recorded rather than claiming the initial network
+IDs all matched.
+
+The pinned README's historical claim that DOMAIN scaffolding is planned remains
+unchanged in exact generated output; parent development guidance clarifies that the
+command is available. Generated content is an Item/Action skeleton, not User
+business logic or authentication. The real User service remains unscaffolded;
+TODO.md and User/App/Wiki/RoadToTheFinal pins are preserved. Real-workspace
+prerequisites and an explicit separate task are required before real scaffolding.

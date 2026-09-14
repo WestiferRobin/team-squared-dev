@@ -8,7 +8,7 @@ files prepared by setup. It does not certify application runtime behavior.
 | --- | --- | --- | --- |
 | ACTIVE | frontend/goal-stats-app | d7e77e711b4286481a35ffb3a98c8b2892ffe8cf | Published containerized scaffold; standalone manual verification pending. |
 | ACTIVE | backend/goalstats-user-service | 70c77c692993fc18e9f484bf22266a15288c0541 | Runtime contract pending; no application/container/test contract. |
-| REFERENCE | backend/template-goalstats-service | 8d05ddfb5d2ece712f26000efcf38408ff33bfe4 | Certified template baseline; Mac verification passed. Reference only. |
+| REFERENCE | backend/template-goalstats-service | f5c1c9d652d74ce11bcc381df4155027ec5a713e | Certified template baseline; Mac verification passed. Reference only. |
 | REFERENCE | frontend/RoadToTheFinal | 4c77197e209292f70ae788e6d4539bb89189e963 | Excluded from active operations. |
 | DOCS | docs/goal-stats-wiki | d3992eb4d0c2e2b0b99fee0ab9da14da422c2071 | Project/class documentation; excluded from runtime and dev tests. |
 
@@ -18,8 +18,8 @@ files prepared by setup. It does not certify application runtime behavior.
 the current parent commit, including feature branches or historical commits.
 `make sync` requires clean parent master and children at current pins, fast-forwards
 to published master, then materializes its exact approved pins. Neither requires
-Docker. Deliberate integration advances only the template and app pins to the exact
-approved commits above. User-service, wiki, and RoadToTheFinal pins are preserved.
+Docker. This adoption advances only the template to the exact approved commit
+above. User-service, app, wiki, and RoadToTheFinal pins are preserved.
 No child source, application feature, or runtime topology changes here.
 See [validation](VALIDATION.md) for exercised cases and [development](DEVELOPMENT.md)
 for safe child development and parent pin review.
@@ -43,7 +43,7 @@ is claimed. Workspace success with these runtime blockers is intentional.
 ## User-service bootstrap boundary
 
 Source: `backend/template-goalstats-service` at
-`8d05ddfb5d2ece712f26000efcf38408ff33bfe4`. Its approved certification includes
+`f5c1c9d652d74ce11bcc381df4155027ec5a713e`. Its approved certification includes
 Mac verification; this parent task verifies the selected contents without rerunning
 standalone template certification.
 
@@ -64,6 +64,6 @@ real dry run is still required before using it on the real user service. Its unt
 TODO.md and detached child HEAD remain safety blockers until deliberately resolved.
 Only the certified template pin is adopted. The real user service remains untouched
 and runtime-pending. The disposable generated User skeleton passed build, EF,
-575 tests and LOCAL/DEV runtime checks. This does not certify the real placeholder
+536 tests (260 unit / 276 integration) and LOCAL/DEV runtime checks. This does not certify the real placeholder
 or the active parent composition. Item/Action remain examples; no business-domain
 generation occurs.
