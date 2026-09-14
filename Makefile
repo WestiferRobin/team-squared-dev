@@ -9,8 +9,10 @@ DRY_RUN ?= false
 override SERVICE := $(value SERVICE)
 override DOMAIN := $(value DOMAIN)
 override DRY_RUN := $(value DRY_RUN)
-export SERVICE DOMAIN DRY_RUN
-.PHONY: help setup sync scaffold-service build run stop logs migrate test smoke
+override OPERATION_PARENT := $(value OPERATION_PARENT)
+override RECOVERY_TOOLING_SHA := $(value RECOVERY_TOOLING_SHA)
+export SERVICE DOMAIN DRY_RUN OPERATION_PARENT RECOVERY_TOOLING_SHA
+.PHONY: help setup sync scaffold-service recover-scaffold build run stop logs migrate test smoke
 help:
 	@printf '%s\n' \
 	  'Canonical workspace: edit independent child repositories directly.' \
@@ -20,6 +22,8 @@ help:
 	  '  make sync                    Fast-forward parent master; synchronize approved pins; no Docker' \
 	  '  make scaffold-service SERVICE=<service> DOMAIN=<Domain>  Transform pinned template identity' \
 	  '    Safe pinned detached/master destination; actual attaches to master.' \
+	  '  make recover-scaffold SERVICE=<service> DOMAIN=<Domain> OPERATION_PARENT=<sha> RECOVERY_TOOLING_SHA=<sha> [DRY_RUN=true]' \
+	  '    Verify an incomplete scaffold; actual recovery finalizes without copying files.' \
 	  '' 'FULL STACK' \
 	  '  make build [ENV=local|dev]    Build every active image' \
 	  '  make run [ENV=local|dev]      Start one box; wait for required readiness' \
@@ -44,3 +48,6 @@ build run stop logs migrate test smoke:
 
 scaffold-service:
 	@bash scripts/scaffold-service.sh
+
+recover-scaffold:
+	@python3 -I -B scripts/recover-scaffold.py

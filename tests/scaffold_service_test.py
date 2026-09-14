@@ -1,5 +1,6 @@
 """Scaffold fixtures use real Git; never scaffold the developer's child repositories."""
 import hashlib
+import json
 import os
 from pathlib import Path
 import shutil
@@ -84,7 +85,7 @@ class Scaffold(unittest.TestCase):
         self.placeholder = self.commit(target)
         self.parent = self.init('parent')
         for name in ['Makefile','scripts/workspace.sh','scripts/git-safety.sh','scripts/box.sh',
-                     'scripts/scaffold-service.sh','scripts/scaffold-transform.py','.gitignore','infra/.env.local.example','infra/.env.dev.example']:
+                     'scripts/scaffold-service.sh','scripts/scaffold-transform.py','scripts/scaffold-verify.py','scripts/recover-scaffold.py','.gitignore','infra/.env.local.example','infra/.env.dev.example']:
             dest = self.parent / name
             dest.parent.mkdir(exist_ok=True, parents=True)
             shutil.copyfile(SOURCE / name, dest)
@@ -335,6 +336,299 @@ class Scaffold(unittest.TestCase):
         env=self.wrapper('tar', '/usr/bin/tar "$@" || exit $?\n/usr/bin/git -C "'+str(self.dest)+'" update-ref -d refs/remotes/origin/master\n')
         self.refuse('is missing', dry='false', env=env)
 
+    def final_verifier_env(self, shell, fail=False):
+        body='for arg in "$@"; do if [[ "$arg" == "'+str(self.dest)+'" ]]; then '+shell+'; '+('exit 77;' if fail else '')+' fi; done\nexec /usr/bin/python3 "$@"\n'
+        return self.wrapper('python3',body)
+
+    def incomplete_fixture(self):
+        self.operation_parent = self.git(self.parent, 'rev-parse', 'HEAD')
+        self.tooling_sha = self.operation_parent
+        self.git(self.parent, 'update-ref', 'refs/remotes/origin/master', self.operation_parent)
+        env=self.final_verifier_env('mkdir -p "'+str(self.dest)+'/src/GoalStats.User.Api/obj"; echo generated > "'+str(self.dest)+'/src/GoalStats.User.Api/obj/design.cache"',True)
+        p=self.invoke(dry='false',env=env)
+        self.assertNotEqual(0,p.returncode,p.stdout)
+        marker=self.parent/'.git/team-squared-scaffold-incomplete'
+        self.assertTrue(marker.exists())
+        recovery=Path((marker/'recovery-directory').read_text().strip())
+        self.assertEqual('final verification', (recovery/'failed-phase.txt').read_text().strip())
+        return marker,recovery
+
+    def recover(self,dry='true',**extra):
+        values = dict(OPERATION_PARENT=self.operation_parent, RECOVERY_TOOLING_SHA=self.tooling_sha)
+        values.update(extra)
+        return self.cmd(self.parent,'make','recover-scaffold','SERVICE='+SERVICE,'DOMAIN=User','DRY_RUN='+dry,
+                        *[k+'='+v for k,v in values.items()],ok=False)
+
+    def test_project_build_artifacts_during_install(self):
+        base=str(self.dest)+'/src/GoalStats.User.Api'
+        env=self.final_verifier_env('mkdir -p "'+base+'/bin/Debug" "'+base+'/obj"; echo build > "'+base+'/obj/generated.cache"')
+        p=self.invoke(dry='false',env=env)
+        self.assertEqual(0,p.returncode,p.stdout)
+        self.assertIn('approved incidental entries:',p.stdout)
+        self.assertEqual('build\n',(self.dest/'src/GoalStats.User.Api/obj/generated.cache').read_text())
+        self.assertFalse((self.parent/'.git/team-squared-scaffold-incomplete').exists())
+
+    def test_final_unexpected_extras_and_payload_defects(self):
+        # Pure verifier is the same entrypoint used at the end of production installation.
+        marker,recovery=self.incomplete_fixture()
+        def check():
+            return self.cmd(self.parent,'python3','-I','-B','scripts/scaffold-verify.py',str(self.dest),str(recovery/'manifest.tsv'),'build-output',ok=False)
+        self.assertEqual(0,check().returncode)
+        for name in ['extra','.env','bin/private','obj/cache','docs/bin/file','src/GoalStats.User.Api/build/file']:
+            with self.subTest(name=name):
+                path=self.dest/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('unexpected')
+                self.assertNotEqual(0,check().returncode)
+                path.unlink()
+                while path.parent!=self.dest and not any(path.parent.iterdir()):
+                    path=path.parent;path.rmdir()
+        path=self.dest/'README.md';data=path.read_bytes()
+        for defect in ['missing','bytes','mode','symlink']:
+            with self.subTest(defect=defect):
+                if defect=='missing':path.unlink()
+                elif defect=='bytes':path.write_bytes(b'corrupt')
+                elif defect=='mode':path.chmod(0o755)
+                else:path.unlink();path.symlink_to(self.base/'outside')
+                self.assertNotEqual(0,check().returncode)
+                if path.is_symlink():path.unlink()
+                path.write_bytes(data);path.chmod(0o644)
+        link=self.dest/'src/GoalStats.User.Api/obj/escape';link.symlink_to(self.base)
+        self.assertNotEqual(0,check().returncode)
+        link.unlink()
+        self.assertTrue(marker.exists())
+
+    def test_recovery_verify_and_finalize(self):
+        marker,recovery=self.incomplete_fixture()
+        before=self.repository_snapshot();payload=self.tree(self.dest);ident=self.identity(self.dest)
+        p=self.recover();self.assertEqual(0,p.returncode,p.stdout)
+        self.assertEqual(before,self.repository_snapshot())
+        self.refuse('Incomplete scaffold')
+        p=self.recover('false');self.assertEqual(0,p.returncode,p.stdout)
+        self.assertFalse(marker.exists());self.assertTrue((recovery/'finalized-marker/recovery-directory').is_file())
+        self.assertEqual(payload,self.tree(self.dest));self.assertEqual(ident,self.identity(self.dest))
+        self.refuse()
+
+    def test_recovery_evidence_mismatch_matrix(self):
+        marker,recovery=self.incomplete_fixture()
+        for name in ['policy.json','source-manifest.tsv','manifest.tsv','transformed.tsv','mapping.tsv','completed.txt','original/README.md','dest.installation','failed-phase.txt']:
+            with self.subTest(name=name):
+                path=recovery/name;before=path.read_bytes();path.write_bytes(b'{}' if name=='policy.json' else b'wrong\n')
+                payload=self.tree(self.dest)
+                p=self.recover('false');self.assertNotEqual(0,p.returncode,p.stdout)
+                self.assertTrue(marker.exists());self.assertEqual(payload,self.tree(self.dest));self.assertEqual(path.read_bytes(),b'{}' if name=='policy.json' else b'wrong\n')
+                path.write_bytes(before)
+        ref=marker/'recovery-directory';before=ref.read_bytes();ref.write_text(str(self.base/'missing'))
+        self.assertNotEqual(0,self.recover('false').returncode);self.assertTrue(marker.exists());ref.write_bytes(before)
+
+    def test_recovery_payload_and_staging_refusal(self):
+        marker,recovery=self.incomplete_fixture()
+        path=self.dest/'README.md';before=path.read_bytes();path.write_text('changed')
+        self.assertNotEqual(0,self.recover('false').returncode);path.write_bytes(before)
+        path.unlink()
+        self.assertNotEqual(0,self.recover('false').returncode);path.write_bytes(before)
+        path.chmod(0o755)
+        self.assertNotEqual(0,self.recover('false').returncode);path.chmod(0o644)
+        self.git(self.dest,'add','README.md')
+        self.assertNotEqual(0,self.recover('false').returncode);self.assertTrue(marker.exists())
+        self.git(self.dest,'reset','HEAD','README.md')
+        extra=self.dest/'.env';extra.write_text('private')
+        self.assertNotEqual(0,self.recover('false').returncode);extra.unlink()
+        self.commit(self.dest)
+        self.assertNotEqual(0,self.recover('false').returncode);self.assertTrue(marker.exists())
+
+    def test_recovery_parent_and_pin_refusals(self):
+        marker,recovery=self.incomplete_fixture()
+        def refused():
+            before=self.repository_snapshot()
+            p=self.recover('false')
+            self.assertNotEqual(0,p.returncode,p.stdout)
+            self.assertEqual(before,self.repository_snapshot())
+            self.assertTrue(marker.exists())
+        for name in ['config/scaffolds.tsv','.gitmodules']:
+            path=self.parent/name;data=path.read_bytes();path.write_bytes(data+b'\n# changed\n')
+            refused();path.write_bytes(data)
+        self.git(self.parent,'update-index','--cacheinfo','160000',self.source_pin,'backend/'+SERVICE)
+        refused();self.git(self.parent,'reset','HEAD','backend/'+SERVICE)
+        self.git(self.parent,'symbolic-ref','HEAD','refs/heads/other')
+        refused();self.git(self.parent,'symbolic-ref','HEAD','refs/heads/master')
+        policy=recovery/'policy.json';data=policy.read_bytes()
+        obj=json.loads(data);obj['source_sha']='0'*40;policy.write_text(json.dumps(obj))
+        refused();policy.write_bytes(data)
+        other=self.git(self.dest,'commit-tree','HEAD^{tree}','-m','different placeholder')
+        self.git(self.dest,'update-ref','refs/remotes/origin/master',other)
+        refused()
+
+    def test_recovery_parent_tooling_ref(self):
+        marker,recovery=self.incomplete_fixture()
+        head=self.git(self.parent,'rev-parse','HEAD')
+        self.git(self.parent,'update-ref','refs/codex/turn-diffs/captures/123/12345678-1234-1234-1234-123456789abc/base',head)
+        p=self.recover();self.assertEqual(0,p.returncode,p.stdout)
+        self.git(self.parent,'update-ref','refs/heads/unexpected',head)
+        self.assertNotEqual(0,self.recover('false').returncode);self.assertTrue(marker.exists())
+
+    def test_recovery_parent_advance_refused(self):
+        marker,recovery=self.incomplete_fixture()
+        old=self.git(self.parent,'rev-parse','HEAD')
+        (self.parent/'README.md').write_text('Reviewed recovery documentation update')
+        self.git(self.parent,'add','README.md');self.git(self.parent,'commit','-qm','recovery docs')
+        self.assertNotEqual(0,self.recover().returncode)
+        p=self.recover(OPERATION_PARENT=old);self.assertNotEqual(0,p.returncode,p.stdout)
+        self.assertTrue(marker.exists())
+
+    def publish_fixture(self, paths, message='approved recovery update'):
+        self.git(self.parent,'add','--',*paths)
+        self.git(self.parent,'commit','-qm',message)
+        self.tooling_sha=self.git(self.parent,'rev-parse','HEAD')
+        self.git(self.parent,'update-ref','refs/remotes/origin/master',self.tooling_sha)
+
+    def recovery_refused_unchanged(self, marker, evidence, **values):
+        before=self.repository_snapshot();saved=self.tree(evidence)
+        p=self.recover('false',**values)
+        self.assertNotEqual(0,p.returncode,p.stdout)
+        self.assertEqual(before,self.repository_snapshot());self.assertEqual(saved,self.tree(evidence))
+        self.assertTrue(marker.exists())
+        return p
+
+    def test_recovery_approved_descendant(self):
+        marker,evidence=self.incomplete_fixture()
+        saved=self.tree(evidence);payload=self.tree(self.dest)
+        old_index=(self.parent/'.git/index').read_bytes()
+        old_log=(self.parent/'.git/logs/HEAD').read_bytes()
+        (self.parent/'README.md').write_text('Reviewed recovery documentation')
+        self.publish_fixture(['README.md'])
+        path=self.parent/'scripts/recover-scaffold.py';path.write_text(path.read_text()+'\n# Certified tooling update\n')
+        self.publish_fixture(['scripts/recover-scaffold.py'])
+        self.assertNotEqual(old_index,(self.parent/'.git/index').read_bytes())
+        self.assertNotEqual(old_log,(self.parent/'.git/logs/HEAD').read_bytes())
+        p=self.recover();self.assertEqual(0,p.returncode,p.stdout)
+        self.assertIn('ORIGINAL OPERATION PARENT SHA: '+self.operation_parent,p.stdout)
+        self.assertIn('CURRENT RECOVERY TOOLING PARENT SHA: '+self.tooling_sha,p.stdout)
+        self.assertIn('CURRENT TRANSFORMER MATCH: YES',p.stdout)
+        self.assertEqual(saved,self.tree(evidence))
+        p=self.recover('false');self.assertEqual(0,p.returncode,p.stdout)
+        self.assertEqual(payload,self.tree(self.dest));self.assertFalse(marker.exists())
+        for name,value in saved.items():self.assertEqual(value,self.tree(evidence)[name])
+
+    def test_recovery_published_fast_forward(self):
+        marker,evidence=self.incomplete_fixture()
+        publisher=self.base/'publisher'
+        self.git(self.base,'clone','-q',str(self.parent),str(publisher))
+        for number in (1,2):
+            (publisher/'README.md').write_text('Certified docs revision '+str(number))
+            self.git(publisher,'add','README.md');self.git(publisher,'commit','-qm','approved docs')
+        self.git(self.parent,'fetch',str(publisher),'master')
+        self.git(self.parent,'merge','--ff-only','FETCH_HEAD')
+        self.tooling_sha=self.git(self.parent,'rev-parse','HEAD')
+        self.git(self.parent,'update-ref','refs/remotes/origin/master',self.tooling_sha)
+        payload=self.tree(self.dest);saved=self.tree(evidence)
+        p=self.recover();self.assertEqual(0,p.returncode,p.stdout)
+        self.assertEqual(saved,self.tree(evidence))
+        p=self.recover('false');self.assertEqual(0,p.returncode,p.stdout)
+        self.assertFalse(marker.exists());self.assertEqual(payload,self.tree(self.dest))
+
+    def test_recovery_wrong_sha_matrix(self):
+        marker,evidence=self.incomplete_fixture()
+        for key in ['OPERATION_PARENT','RECOVERY_TOOLING_SHA']:
+            for value in ['', '0'*40, self.source_pin, 'HEAD', '$(shell touch injected)']:
+                with self.subTest(key=key,value=value):self.recovery_refused_unchanged(marker,evidence,**{key:value})
+        self.assertFalse((self.parent/'injected').exists())
+        self.git(self.parent,'update-ref','refs/remotes/origin/master',self.git(self.parent,'commit-tree','HEAD^{tree}','-m','unrelated'))
+        self.recovery_refused_unchanged(marker,evidence)
+        self.git(self.parent,'update-ref','refs/remotes/origin/master',self.operation_parent)
+        (self.parent/'README.md').write_text('Certified docs')
+        self.publish_fixture(['README.md'])
+        original_object=self.parent/'.git/objects'/self.operation_parent[:2]/self.operation_parent[2:]
+        self.assertTrue(original_object.is_file())
+        original_object.unlink()  # Disposable repository only; evidence retains the genuine original SHA.
+        p=self.recovery_refused_unchanged(marker,evidence)
+        self.assertIn('cat-file',p.stdout)
+
+    def test_recovery_intermediate_reverts(self):
+        # Endpoint equality must never conceal a prohibited intermediate commit.
+        for name in ['config/scaffolds.tsv','scripts/scaffold-transform.py']:
+            with self.subTest(path=name):
+                fixture=Scaffold();fixture.setUp()
+                try:
+                    marker,evidence=fixture.incomplete_fixture()
+                    path=fixture.parent/name;original=path.read_bytes();path.write_bytes(original+b'\n# incompatible\n')
+                    fixture.publish_fixture([name]);path.write_bytes(original);fixture.publish_fixture([name])
+                    self.assertEqual('',fixture.git(fixture.parent,'diff','--name-only',fixture.operation_parent,fixture.tooling_sha))
+                    p=fixture.recovery_refused_unchanged(marker,evidence)
+                    self.assertIn('Critical input changed',p.stdout)
+                finally:fixture.doCleanups()
+
+    def test_recovery_critical_files_and_gitlinks(self):
+        for name in ['frontend/goal-stats-app','docs/goal-stats-wiki','frontend/RoadToTheFinal']:
+            self.git(self.parent,'submodule','add','-q',str(self.base/'destination-remote'),name)
+        self.commit(self.parent)
+        marker,evidence=self.incomplete_fixture()
+        # Restore only disposable parent metadata between independent mutation cases.
+        old_index=(self.parent/'.git/index').read_bytes();old_log=(self.parent/'.git/logs/HEAD').read_bytes()
+        def restore():
+            self.git(self.parent,'update-ref','refs/heads/master',self.operation_parent)
+            self.git(self.parent,'update-ref','refs/remotes/origin/master',self.operation_parent)
+            (self.parent/'.git/index').write_bytes(old_index);(self.parent/'.git/logs/HEAD').write_bytes(old_log)
+            self.tooling_sha=self.operation_parent
+        for name in ['.gitmodules','config/scaffolds.tsv','config/components.tsv','scripts/scaffold-transform.py']:
+            with self.subTest(file=name):
+                path=self.parent/name;data=path.read_bytes();path.write_bytes(data+b'\n# changed\n')
+                self.publish_fixture([name]);self.recovery_refused_unchanged(marker,evidence)
+                path.write_bytes(data);restore()
+        for name in [SOURCE_PATH,DEST_PATH,'frontend/goal-stats-app','docs/goal-stats-wiki','frontend/RoadToTheFinal']:
+            with self.subTest(gitlink=name):
+                other=self.placeholder if name==SOURCE_PATH else self.source_pin
+                self.git(self.parent,'update-index','--cacheinfo','160000',other,name)
+                self.git(self.parent,'commit','-qm','changed gitlink')
+                self.tooling_sha=self.git(self.parent,'rev-parse','HEAD')
+                self.git(self.parent,'update-ref','refs/remotes/origin/master',self.tooling_sha)
+                self.recovery_refused_unchanged(marker,evidence);restore()
+        self.assertEqual(0,self.recover().returncode)
+
+    def test_recovery_history_substitution(self):
+        marker,evidence=self.incomplete_fixture()
+        gd=self.parent/'.git'
+        self.git(self.parent,'replace',self.operation_parent,self.git(self.parent,'commit-tree','HEAD^{tree}','-m','unrelated'))
+        p=self.recovery_refused_unchanged(marker,evidence);self.assertIn('Replace-ref',p.stdout)
+        self.git(self.parent,'replace','-d',self.operation_parent)
+        (gd/'info/grafts').write_text(self.operation_parent+'\n')
+        p=self.recovery_refused_unchanged(marker,evidence);self.assertIn('Grafted history',p.stdout)
+        (gd/'info/grafts').unlink()
+        self.assertEqual(0,self.recover().returncode)
+
+    def test_recovery_merge_and_unrelated(self):
+        marker,evidence=self.incomplete_fixture()
+        tree=self.git(self.parent,'rev-parse','HEAD^{tree}')
+        unrelated=self.git(self.parent,'commit-tree',tree,'-m','unrelated replacement')
+        self.git(self.parent,'update-ref','refs/heads/master',unrelated)
+        self.git(self.parent,'update-ref','refs/remotes/origin/master',unrelated);self.tooling_sha=unrelated
+        self.recovery_refused_unchanged(marker,evidence)
+        merge=self.git(self.parent,'commit-tree',tree,'-p',self.operation_parent,'-p',unrelated,'-m','merge')
+        self.git(self.parent,'update-ref','refs/heads/master',merge)
+        self.git(self.parent,'update-ref','refs/remotes/origin/master',merge);self.tooling_sha=merge
+        p=self.recovery_refused_unchanged(marker,evidence);self.assertIn('linear history',p.stdout)
+
+    def test_recovery_reflog_and_parent_index(self):
+        marker,evidence=self.incomplete_fixture()
+        log=self.parent/'.git/logs/HEAD';data=log.read_bytes()
+        log.write_bytes(data+data.splitlines(keepends=True)[-1])
+        p=self.recovery_refused_unchanged(marker,evidence);self.assertIn('reflog transitions',p.stdout)
+        log.write_bytes(data)
+        path=self.parent/'README.md';path.write_text('staged parent edit')
+        self.git(self.parent,'add','README.md')
+        p=self.recovery_refused_unchanged(marker,evidence);self.assertIn('Parent index',p.stdout)
+        fixture=Scaffold();fixture.setUp()
+        try:
+            marker,evidence=fixture.incomplete_fixture()
+            before=fixture.tree(evidence);payload=fixture.tree(fixture.dest)
+            body='/usr/bin/git "$@" || exit $?\nif [[ "$*" == *"cat-file blob"* && "$*" == *"'+str(fixture.src)+'"* ]]; then printf "\\n# concurrent parent edit\\n" >> "'+str(fixture.parent/'Makefile')+'"; fi\n'
+            env=fixture.wrapper('git',body)
+            p=fixture.cmd(fixture.parent,'make','recover-scaffold','SERVICE='+SERVICE,'DOMAIN=User',
+                          'OPERATION_PARENT='+fixture.operation_parent,'RECOVERY_TOOLING_SHA='+fixture.tooling_sha,
+                          'DRY_RUN=true',env=env,ok=False)
+            self.assertNotEqual(0,p.returncode,p.stdout)
+            self.assertIn('Parent tracked file differs',p.stdout)
+            self.assertTrue(marker.exists());self.assertEqual(before,fixture.tree(evidence));self.assertEqual(payload,fixture.tree(fixture.dest))
+        finally:fixture.doCleanups()
+
     def test_invalid_dry_run(self):
         for value in ['', 'yes', '1', 'TRUE', 'false;echo invalid']:
             with self.subTest(value=value): self.refuse('DRY_RUN accepts', dry=value)
@@ -494,17 +788,17 @@ class Scaffold(unittest.TestCase):
 
     def test_archive_export_ignore(self):
         (self.src/'.gitattributes').write_text('README.md export-ignore\n')
-        self.approve_source();self.refuse('Payload missing')
+        self.approve_source();self.refuse('missing expected paths: 1')
 
     def test_archive_export_subst(self):
         (self.src/'.gitattributes').write_text('README.md export-subst\n')
         (self.src/'README.md').write_text('$Format:%H$\n')
-        self.approve_source();self.refuse('Payload content mismatch')
+        self.approve_source();self.refuse('content mismatch')
 
     def test_local_export_attribute(self):
         gitdir=Path(self.git(self.src,'rev-parse','--absolute-git-dir'))
         (gitdir/'info/attributes').write_text('README.md export-ignore\n')
-        self.refuse('Payload missing')
+        self.refuse('missing expected paths: 1')
 
     def test_repeat_uncommitted_and_committed(self):
         p=self.invoke();self.assertEqual(0,p.returncode,p.stdout)
@@ -557,7 +851,7 @@ class Scaffold(unittest.TestCase):
         env=self.wrapper('cp', '"/bin/cp" "$@" || exit $?\ncase "$2" in */backend/goalstats-user-service/src/Service.cs) printf corrupt >> "$2" ;; esac\n')
         p=self.invoke(direct=True,env=env)
         self.assertEqual(1,p.returncode,p.stdout)
-        self.assertIn('Payload content mismatch',p.stdout)
+        self.assertIn('content mismatch',p.stdout)
         self.assertTrue((self.parent/'.git/team-squared-scaffold-incomplete').exists())
 
     def test_existing_operation_indicators(self):
@@ -571,15 +865,15 @@ class Scaffold(unittest.TestCase):
 
     def test_archive_extra_entry(self):
         env=self.wrapper('tar','/usr/bin/tar "$@" || exit $?\nmkdir "$4/unexpected"\n')
-        self.refuse('Payload paths differ',env=env)
+        self.refuse('unexpected paths:',env=env)
 
     def test_archive_git_entry(self):
         env=self.wrapper('tar','/usr/bin/tar "$@" || exit $?\nprintf unexpected > "$4/.git"\n')
-        self.refuse('Payload paths differ',env=env)
+        self.refuse('unexpected paths:',env=env)
 
     def test_archive_executable_loss(self):
         env=self.wrapper('tar','/usr/bin/tar "$@" || exit $?\nchmod 644 "$4/scripts/test.sh"\n')
-        self.refuse('Missing executable bit',env=env)
+        self.refuse('mode mismatch',env=env)
 
     def test_exclusive_lock(self):
         gitdir=self.git(self.parent,'rev-parse','--absolute-git-dir')

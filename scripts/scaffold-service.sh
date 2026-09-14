@@ -274,28 +274,12 @@ payload_error() {
   if [[ "$installing" == 1 ]]; then operational "$*"; else fail "$*"; fi
 }
 verify_payload() {
-  local directory=$1 mode hash path actual
-  while IFS=$'\t' read -r mode hash path; do
-    [[ -f "$directory/$path" && ! -L "$directory/$path" ]] || payload_error "Payload missing/nonregular: $path"
-    actual=$(git hash-object --no-filters -- "$directory/$path")
-    [[ "$actual" == "$hash" ]] || payload_error "Payload content mismatch: $path"
-    if [[ "$mode" == 100755 ]]; then
-      [[ -x "$directory/$path" ]] || payload_error "Missing executable bit: $path"
-    else [[ ! -x "$directory/$path" ]] || payload_error "Unexpected executable bit: $path"; fi
-  done < "$scratch/manifest.tsv"
+  local directory=$1
   if [[ "$directory" == "$dest" ]]; then
-    (cd "$directory"; find . -path ./.git -prune -o -print) | LC_ALL=C sort > "$scratch/actual-paths"
+    python3 -I -B scripts/scaffold-verify.py "$directory" "$scratch/manifest.tsv" build-output || payload_error 'Final payload verification refused; see path diagnostics above.'
   else
-    (cd "$directory"; find . -print) | LC_ALL=C sort > "$scratch/actual-paths"
+    python3 -I -B scripts/scaffold-verify.py "$directory" "$scratch/manifest.tsv" || payload_error 'Prepared payload verification refused; see path diagnostics above.'
   fi
-  {
-    printf '.\n'
-    while IFS= read -r path; do
-      printf './%s\n' "$path"
-      while [[ "$path" == */* ]]; do path=${path%/*}; printf './%s\n' "$path"; done
-    done < "$scratch/paths"
-  } | LC_ALL=C sort -u > "$scratch/expected-paths"
-  cmp -s "$scratch/actual-paths" "$scratch/expected-paths" || payload_error 'Payload paths differ from the committed tree.'
 }
 identity() {
   local repo=$1 gitdir index reflog

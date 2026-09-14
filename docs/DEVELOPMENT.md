@@ -223,8 +223,8 @@ source-to-output mapping, transformed manifest, original placeholders, Git ident
 completed.txt and failed-phase.txt,
 and records its path in the parent's Git directory under
 `team-squared-scaffold-incomplete`. The error identifies the failed path/phase.
-Inspect and preserve the resulting work; reconcile deliberately before removing the
-indicator. Do not blindly rerun, reset, or clean. The command performs no automatic
+Inspect and preserve the resulting work; use explicit recovery verification below.
+Do not manually remove the indicator, blindly rerun, reset, or clean. The command performs no automatic
 rollback, and a repeat invocation refuses dirty or already-committed scaffolds.
 
 Beginner workflow for an approved scaffolding task:
@@ -387,3 +387,64 @@ Failure evidence is retained outside repositories; successful runs remove it.
 Treat raw config evidence as private. Errors identify keys/categories, not values. The external scaffold lock covers
 preparation, attachment and installation, but cannot prevent manual Git changes.
 All existing parent cleanliness, placeholder and repeat-run guards remain active.
+
+
+## Explicit scaffold recovery
+
+Final verification requires every transformed payload file at its exact path, bytes
+and mode. It permits additional directories/files only beneath `bin/` or `obj/`
+directly inside a project root identified by a manifest-listed `.csproj`. These
+artifacts are counted separately from payload. Symlinks, special files, unknown
+extras (including ignored `.env` files), and non-project `bin/obj` refuse.
+
+For an incomplete operation that reached final verification with all writes complete:
+
+```bash
+make recover-scaffold SERVICE=<approved-service> DOMAIN=<approved-domain> \
+  OPERATION_PARENT=<original-sha> RECOVERY_TOOLING_SHA=<certified-sha> DRY_RUN=true
+make recover-scaffold SERVICE=<approved-service> DOMAIN=<approved-domain> \
+  OPERATION_PARENT=<original-sha> RECOVERY_TOOLING_SHA=<certified-sha>
+```
+
+Preview leaves the marker and evidence intact. Actual recovery independently
+reconstructs the exact pinned template transformation, checks retained manifests,
+mapping, completed writes and original placeholders, and applies the same payload
+verifier. Supply the original operation SHA from the retained evidence and the exact
+tooling SHA approved by the separate certification/publication task. A supplied SHA
+is a binding to that external approval, not proof of certification by itself.
+
+The original parent defines the operation; the current parent supplies the recovery
+engine. The engine reads the original committed transformer and invokes only its
+pure planning logic in memory. Original/current transformer bytes and mode must
+match. No old installer or template code is executed, and no branch is switched.
+
+The approved tooling SHA must equal HEAD, master and origin/master. Every intervening
+commit must form a complete linear descendant chain and touch only these exact paths:
+
+- `Makefile`, `README.md`
+- `docs/DEVELOPMENT.md`, `docs/READINESS.md`, `docs/VALIDATION.md`
+- `scripts/scaffold-service.sh`, `scripts/scaffold-verify.py`, `scripts/recover-scaffold.py`
+- `tests/scaffold_service_test.py`
+
+All child gitlinks, complete `.gitmodules`, both registries and the transformer remain
+unchanged throughout that history. A prohibited change followed by a revert refuses.
+Merge/shallow/replaced/grafted histories refuse. Parent source must match the approved
+commit and its index must match the committed tree, with no staged changes. Historical
+index bytes may differ; the current execution baseline is preserved instead. The
+original HEAD reflog prefix must remain intact, and appended transitions must match
+the approved commit chain. Existing unrelated refs/config remain strict; only the
+existing narrow new Codex capture-ref exception is retained.
+
+Recovery prints both parent SHAs and the compatibility checks. It never rewrites
+historical snapshots to claim the operation happened under the newer tooling. The
+command uses local Git objects only; publication/real-recovery certification checks
+the live remote separately before invoking it.
+
+After two successful verification passes, recovery atomically moves the specific
+marker into `finalized-marker` inside the retained recovery directory. If that
+archive cannot be performed atomically, recovery refuses without deleting the marker.
+Recovery never recopies, overwrites, deletes build output, stages, commits, pushes,
+or changes branches/pins. Failure preserves the marker and evidence. The resulting
+child remains on master at its approved placeholder commit, with modified
+README/.gitignore and untracked scaffold files ready for review. Ordinary scaffold
+refuses both an incomplete operation and an already-generated destination.

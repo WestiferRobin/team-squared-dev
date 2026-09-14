@@ -69,3 +69,24 @@ and runtime-pending. The disposable generated User skeleton passed build, EF,
 553 tests (260 unit / 293 integration) and LOCAL/DEV runtime checks. This does not certify the real placeholder
 or the active parent composition. Item/Action remain examples; no business-domain
 generation occurs.
+
+
+## Scaffold final verification and recovery support
+
+The verifier now allows only incidental build output beneath manifest-declared
+.NET project `bin/obj` directories; all intended payload remains byte/mode exact
+and arbitrary extras still refuse. Explicit `make recover-scaffold` verifies a
+completed interrupted installation and archives its marker without reinstalling,
+staging or committing. See [recovery requirements](DEVELOPMENT.md#explicit-scaffold-recovery).
+The real User incomplete marker, payload and retained evidence are unchanged by
+this implementation and disposable certification. Real recovery remains a separate task.
+
+
+Recovery parent-HEAD compatibility now requires explicit `OPERATION_PARENT` and
+`RECOVERY_TOOLING_SHA` inputs. Only the externally certified tooling commit and a
+compatible linear history can recover an older operation. Original pins, registries,
+transformer and evidence remain authoritative. Disposable certification covers the
+old-verifier failure followed by compatible tooling advancement and recovery, plus
+553 generated tests and LOCAL/DEV workflows. See the current
+[certification record](VALIDATION.md#recovery-compatible-tooling-certification).
+Real User recovery must use the exact separately recorded published tooling SHA.

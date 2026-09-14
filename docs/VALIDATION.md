@@ -518,3 +518,211 @@ The complete real User worktree/Git-file snapshot and TODO.md remained unchanged
 Real User is still clean on master at the approved placeholder with its existing
 VS Code metadata; no real preview or scaffold was run. All child pins and the
 RoadToTheFinal main exception are unchanged.
+
+
+## Final payload verification and explicit recovery implementation
+
+The scaffold suite retains its original 84 scenarios and adds eight cases with
+subcase matrices for project-root build artifacts, unexpected extras, exact payload
+failures, evidence mismatch, recovery preview/finalization, Git/pin refusals and
+Codex capture refs. Fixtures run actual installation and create `bin/obj` output
+before final verification. Recovery independently reconstructs the pinned payload;
+preview and refusal snapshots prove preservation, while successful finalization
+preserves child files/Git identity and archives only the operation marker.
+
+Validation commands:
+
+```bash
+python3 -B tests/scaffold_service_test.py
+python3 -B tests/scaffold_transform_test.py
+python3 -B tests/workspace_test.py
+bash -n scripts/scaffold-service.sh scripts/workspace.sh
+make help
+git diff --check
+```
+
+Python files and embedded scaffold Python blocks are parsed without writing bytecode.
+The real User worktree, its Git metadata, incomplete marker and retained recovery
+files are compared by SHA-256 and mode against the initial preservation snapshot.
+No real scaffold/recovery execution, staging, commit, push or pin update is part of
+this implementation validation. Publishing changes the parent HEAD; recovery of an
+older operation intentionally refuses under the required strict HEAD policy. That
+boundary needs explicit resolution before the later real-recovery task.
+
+Implementation results: scaffold **92 passed / 0 failed / 0 skipped**; transformer
+**25 passed / 0 failed / 0 skipped**; workspace **19 passed / 0 failed / 0 skipped**.
+Shell/Python syntax, Make help and diff checks passed. All **489** baseline files
+across real User, its Git metadata, marker and recovery evidence remained hash/mode
+exact. This is implementation validation; publication and real recovery were not run.
+
+## Final verification/recovery certification — publication blocked
+
+Prompt 2 certification passed **92 scaffold / 25 transformer / 19 workspace**
+tests, zero failures/skips, plus shell/Python syntax, Make help and diff checks.
+Two fresh disposable canonical parent clones completed `make setup`. Normal
+preview was write-free; production scaffold installed all **141** independently
+reconstructed byte/mode-exact User files while six representative build artifacts
+were injected across all three declared project roots immediately before inventory.
+A separate fresh clone retained a completed interrupted installation, then passed
+explicit recovery preview and finalization with payload, build output and child Git
+identity unchanged. Evidence was retained and only its marker was archived. Both
+preview and actual ordinary repeats refused after finalization.
+
+Six additional production-path cases covered detached/master destinations with
+artifact creation during copying, after the last copy, and before final inventory.
+An expanded recovery refusal matrix preserved marker/evidence for arbitrary and
+ignored extras, `.env`, editor metadata, caches, root/non-project bin/obj, sibling
+generated directories, wrong SERVICE/DOMAIN, missing/corrupt/mode-changed payload,
+residual identity, symlinks/path escapes, wrong branch and a merge operation.
+Retained-manifest/mapping/completed-write and parent/pin safety cases also passed.
+Missing/extra/corrupt diagnostics included counts and paths without the misleading
+“committed tree” message. Scaffold and recovery use pinned local sources offline.
+
+Generated `make unit`, `make integration` and `make test` passed **260 unit / 293
+integration / 553 total**, zero failures/skips. Solution build and API publish
+passed with **0 warnings / 0 errors**. EF confirmed UserDbContext,
+`20260908043250_InitialCreate`, and no pending model changes. Exact generation
+preserved MetaController and Item/Action examples with zero reserved template tokens.
+Smoke and unchanged workflow certification passed LOCAL/DEV, Swagger, health/ready,
+CRUD/cache/cascade, PostgreSQL/Redis, two persistence cycles, controlled failures
+and SIGTERM cleanup. Real-parent build/run/migrate/smoke refused before runtime
+actions; no real User scaffold, recovery or test execution was performed.
+
+**P1 publication blocker:** a disposable publication transition reproduced
+`Recovery refused: Parent HEAD differs from interrupted operation`. The current
+strict policy cannot recover the existing real operation after publishing the fix.
+Prompt 2 requires every gate, including recovery with published tooling, to pass
+before committing/pushing. Therefore publication was not performed. A decision on
+an explicit, narrowly constrained operation-parent transition is required before
+changing this safety policy; no override has been added.
+
+All certification-owned Docker resources were removed. Container, volume and image
+inventories and user-created network IDs matched the initial inventory. Docker's
+built-in bridge ID changed from `bba9250b7d0e` to `570dab75a4ab`; no certification
+command targeted that bridge. The workflow's own before/after resource and unrelated
+container-state preservation checks passed. This environmental observation is not
+reported as an identical full network inventory.
+
+Real User remains in its incomplete-scaffold state: master at the approved pin,
+141 exact payload files, two modified placeholders, 139 untracked payload files,
+10 ignored build files, nothing staged. The full 489-file worktree/Git/marker/
+recovery evidence hash-and-mode baseline is preserved. All five child pins and
+TODO.md remain unchanged. No parent staging, commit, or push was performed.
+
+## Recovery parent-HEAD compatibility implementation
+
+This implementation supersedes the strict-parent-HEAD publication blocker above;
+certification/publication and real recovery remain separate tasks. The recovery
+interface now requires explicit original `OPERATION_PARENT` and externally approved
+`RECOVERY_TOOLING_SHA` values. The latter must match HEAD, master and origin/master.
+No SHA is inferred as a substitute for the caller's certification decision.
+
+Every intervening commit must form a complete linear descendant chain. Only the
+nine exact recovery/scaffold/test/docs/Make paths listed in DEVELOPMENT.md may
+change. Every child gitlink, full `.gitmodules`, both registries and the original
+transformer blob/mode are frozen across every commit. Prohibited changes later
+reverted still refuse. Replace refs, grafts, missing/shallow history, merges,
+unrelated ancestry and conflicting staged/working parent changes refuse.
+
+The original operation definition is read from its original Git commit. Recovery
+loads the original committed transformer as an in-memory module with its CLI
+inactive, invokes its pure planning logic on original template blobs, and compares
+that result with the identical current transformer and retained operation evidence.
+No installer or template code runs. The verified real original transformer blob is
+`f061825f61c1ddcf5273ebb1af0ea7a62db969de`; the transformer itself is unchanged.
+
+Historical index bytes are not reused as the current baseline. Instead the current
+index must represent the approved committed tree, and every tracked parent file
+must match its approved blob/mode. The original HEAD reflog prefix is verified by
+its retained hash; appended old/new SHA pairs must follow the approved commit chain.
+Master/origin-master transitions are explicit, unrelated refs/config remain strict,
+and current parent identity is preserved across both verification passes. Original
+snapshots are never rewritten to claim the operation happened under newer tooling.
+
+Eight new regression cases extend the existing 92 scenarios: approved multi-commit
+advancement, explicit SHA refusal, prohibited intermediate reverts, all five child
+gitlinks and critical files, replace/graft substitution, merge/unrelated history,
+reflog/index refusal, and an actual multi-commit publication fast-forward. The
+positive case preserves historical evidence while
+proving legitimate HEAD/ref/index/reflog advancement, write-free preview and actual
+marker-only finalization. Recovery-specific cases are included in the scaffold suite.
+
+
+Compatibility implementation validation passed **100 scaffold / 25 transformer /
+19 workspace tests**, zero failures/skips. The scaffold suite includes **14
+recovery-specific cases**. Additional targeted checks passed for an unavailable
+original commit object (with unchanged operation evidence) and parent worktree
+mutation during payload reconstruction. Syntax, Make help and diff checks passed.
+The complete real 489-file User/Git/marker/recovery snapshot remained hash/mode exact;
+all five child pins, transformer, registries, `.gitmodules` and TODO.md are unchanged.
+No real recovery/scaffold, parent staging, commit or push was performed. This is
+ready for separate certification/publication, not authorization to recover real User.
+
+## Recovery-compatible tooling certification
+
+A fresh canonical parent clone at original operation commit
+`01b3245e937eb7644e844972f810310198d261ba` completed setup and started with the
+approved two-file User placeholder. The original production scaffold installed
+all **141** exact transformed files while six representative `bin/obj` artifacts
+were created across the three project roots. Its old final verifier failed with
+“Payload paths differ from the committed tree”; the completed-write record, marker
+and original operation evidence were retained. The clone then advanced through a
+parent-only candidate tooling commit, with master and origin/master aligned.
+Explicit old-parent/new-tooling recovery preview and actual finalization passed.
+
+Independent reconstruction used the original committed transformer blob
+`f061825f61c1ddcf5273ebb1af0ea7a62db969de` and original template pin
+`07a75b4a8e6e83429c41c51527691870884d76e8`. All 141 payload files matched bytes and
+modes with zero reserved template tokens. Publication changed the parent index and
+HEAD reflog, while historical evidence stayed exact. Preview wrote no repository
+files. Actual recovery preserved every child file, all six build artifacts and
+child Git identity; it only archived the marker. Ordinary scaffold refused with
+the marker present and both ordinary repeats refused after recovery.
+
+Additional disposable histories changed and then restored **each of all five
+child gitlinks and all four critical files**, independently. All nine refused even
+with empty endpoint diffs and preserved marker/evidence/payload. A disallowed
+noncritical file change followed by removal also refused. Replayed/rebased history
+with identical trees refused ancestry validation. Approved multi-commit docs/tooling
+advancement and an actual publication-like multi-commit fast-forward passed in the
+regression suite; merge, unrelated, missing-object, replace/graft, explicit-SHA,
+staging, ref/reflog and concurrent tracked-file mutation refusals were covered too.
+
+Additional recovery checks refused `.env`, editor/cache files, root/non-project
+`bin/obj`, sibling generated directories, symlinks/path escapes, a hidden tracked
+execution-file edit and unauthorized parent config. Recovery preview and actual
+passed with a network-command tripwire and zero attempts. The existing scaffold
+suite also checks that no network commands are attempted after setup. Setup, sync,
+normal scaffold interface, auto-attachment, transformer and all child pins are
+unchanged.
+
+The recovered disposable User passed `make unit`, `make integration` and `make
+test`: **260 unit / 293 integration / 553 total**, zero failures/skips. Solution
+build and API publish passed with **0 warnings / 0 errors**. EF confirmed
+`UserDbContext`, migration `20260908043250_InitialCreate`, and no pending model
+changes. Smoke and unchanged workflow certification passed LOCAL/DEV, Swagger,
+MetaController health/readiness, Item/Action CRUD/cache/cascade, PostgreSQL/Redis,
+and two persistence cycles per mode. Normal, repeated injected-failure and SIGTERM
+test/smoke runs cleaned their resources and preserved unrelated container state
+and LOCAL/DEV sentinel data.
+
+All certification-owned Docker resources were removed. Container, image and volume
+inventories and every non-bridge network ID matched the initial inventory. Docker's
+built-in bridge ID changed from `570dab75a4ab` to `6e64154903c7`; no certification
+command targeted it. The unchanged workflow's own full before/after inventory and
+unrelated-container state checks passed. This environmental observation is recorded
+rather than claiming an identical full network inventory.
+
+The real incomplete User operation is outside this certification: no real scaffold
+or recovery was invoked. All **489** real User/Git/marker/evidence baseline files
+remain hash/mode exact, User remains on master at its approved placeholder, and
+nothing in User is staged. Publication of this parent tooling and subsequent real
+recovery are distinct steps; real recovery requires the exact published commit SHA
+from this certification, not a branch name or an inferred current HEAD.
+
+The certification rerun passed **100 scaffold / 25 transformer / 19 workspace
+tests**, with **14 recovery-specific cases included** in the scaffold count and
+zero failures/skips. All parent shell scripts, Python files and embedded scaffold
+Python blocks passed syntax checks; `make help` and `git diff --check` passed.
+Every prepublication certification gate passed. The publication commit is the
+externally reviewed recovery-tooling anchor; real recovery remains a separate task.

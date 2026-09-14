@@ -56,6 +56,11 @@ LOCAL/DEV runtime certification. It still contains example Item/Action behavior,
 not real User functionality. Real-service use requires resolving local safety
 blockers and reviewing a successful preview in a separate explicit task.
 
+Final verification permits only incidental `bin/` and `obj/` beneath project roots
+declared by generated `.csproj` files. Other extras still refuse. Incomplete
+operations require explicit [recovery verification](docs/DEVELOPMENT.md#explicit-scaffold-recovery);
+recovery preserves files and clears the marker only after every check passes.
+
 ## Repositories
 
 | Role | Path |
@@ -76,6 +81,7 @@ make help
 make setup
 make sync
 make scaffold-service SERVICE=<approved-service> DOMAIN=<approved-domain> [DRY_RUN=true]
+make recover-scaffold SERVICE=<approved-service> DOMAIN=<approved-domain> OPERATION_PARENT=<original-sha> RECOVERY_TOOLING_SHA=<certified-sha> [DRY_RUN=true]
 make build [ENV=local|dev]
 make run [ENV=local|dev]
 make stop [ENV=local|dev]
