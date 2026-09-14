@@ -8,7 +8,7 @@ files prepared by setup. It does not certify application runtime behavior.
 | --- | --- | --- | --- |
 | ACTIVE | frontend/goal-stats-app | d7e77e711b4286481a35ffb3a98c8b2892ffe8cf | Published containerized scaffold; standalone manual verification pending. |
 | ACTIVE | backend/goalstats-user-service | 70c77c692993fc18e9f484bf22266a15288c0541 | Runtime contract pending; no application/container/test contract. |
-| REFERENCE | backend/template-goalstats-service | f5c1c9d652d74ce11bcc381df4155027ec5a713e | Certified template baseline; Mac verification passed. Reference only. |
+| REFERENCE | backend/template-goalstats-service | 07a75b4a8e6e83429c41c51527691870884d76e8 | Certified template baseline; Mac verification passed. Reference only. |
 | REFERENCE | frontend/RoadToTheFinal | 4c77197e209292f70ae788e6d4539bb89189e963 | Excluded from active operations. |
 | DOCS | docs/goal-stats-wiki | d3992eb4d0c2e2b0b99fee0ab9da14da422c2071 | Project/class documentation; excluded from runtime and dev tests. |
 
@@ -43,7 +43,7 @@ is claimed. Workspace success with these runtime blockers is intentional.
 ## User-service bootstrap boundary
 
 Source: `backend/template-goalstats-service` at
-`f5c1c9d652d74ce11bcc381df4155027ec5a713e`. Its approved certification includes
+`07a75b4a8e6e83429c41c51527691870884d76e8`. Its approved certification includes
 Mac verification; this parent task verifies the selected contents without rerunning
 standalone template certification.
 
@@ -60,10 +60,11 @@ This is deterministic identity transformation using Python 3.9+, independent of
 Docker/network after setup. DOMAIN is required and registry-approved.
 It does not implement or certify the destination service. Actual-template disposable
 certification passed, including exact payload and Git preservation checks. A successful
-real dry run is still required before using it on the real user service. Its untracked parent
-TODO.md and detached child HEAD remain safety blockers until deliberately resolved.
+real dry run is still required before using it on the real user service. The real
+child still needs a feature branch; any dirty parent work must be resolved before
+preview. TODO.md is already tracked and must remain preserved.
 Only the certified template pin is adopted. The real user service remains untouched
 and runtime-pending. The disposable generated User skeleton passed build, EF,
-536 tests (260 unit / 276 integration) and LOCAL/DEV runtime checks. This does not certify the real placeholder
+553 tests (260 unit / 293 integration) and LOCAL/DEV runtime checks. This does not certify the real placeholder
 or the active parent composition. Item/Action remain examples; no business-domain
 generation occurs.

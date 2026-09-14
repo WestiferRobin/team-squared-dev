@@ -41,7 +41,7 @@ checkout movement. Staged/unstaged tracked changes, nonignored untracked files,
 conflicts, in-progress merge/rebase/cherry-pick/revert/bisect operations, edited
 metadata/gitlinks, and clean off-pin children cause refusal. Missing child paths
 must be empty, and symlinks cannot occupy them. Work is never automatically stashed,
-reset, cleaned, staged, or discarded. The existing untracked parent `TODO.md` is
+reset, cleaned, staged, or discarded. Any untracked parent work such as `TODO.md` is
 subject to the same policy and is preserved; it is not an exception.
 
 Ignored files are excluded according to Git's normal ignore rules: this parent's
@@ -87,7 +87,7 @@ commit/publish there. App standalone manual runtime verification remains pending
 Wiki edits do not change the parent pin until an approved wiki commit is integrated.
 
 For the upcoming user-service bootstrap, the tracked template source is
-`backend/template-goalstats-service` at `f5c1c9d652d74ce11bcc381df4155027ec5a713e`;
+`backend/template-goalstats-service` at `07a75b4a8e6e83429c41c51527691870884d76e8`;
 the destination remains `backend/goalstats-user-service` at
 `70c77c692993fc18e9f484bf22266a15288c0541`. Create the destination feature branch
 before a later tracked export and implementation. Pin adoption performs neither.
@@ -116,7 +116,9 @@ INTEGRATION TESTS FOLLOW BOUNDARIES
 
 SMOKE TESTS FOLLOW BUILT SYSTEM
 
-Controllers are integration-only. The certified baseline is 260 unit and 276
+MetaController owns `/health` and `/ready`, outside Swagger, with unrestricted
+method compatibility. Readiness may be 200 `Degraded`; waits require 200 `Healthy`.
+Controllers are integration-only. The certified baseline is 260 unit and 293
 integration tests; DOMAIN transformation must preserve discovery. See the
 [template testing guide](../backend/template-goalstats-service/docs/TESTING.md) for
 placement rules. Generated services remain Item/Action skeletons, without User

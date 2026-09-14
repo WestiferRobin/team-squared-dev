@@ -277,13 +277,13 @@ Resolve real-workspace prerequisites, create `feat/architecture-prototype` insid
 the User service, and run the real DOMAIN=User preview/scaffold only as a separate
 explicit task. This certification does not perform that action.
 
-## Test-aligned template adoption and generated User certification
+## Test-aligned template adoption and generated User certification (historical)
 
 The selected template advances from
 `8d05ddfb5d2ece712f26000efcf38408ff33bfe4` to
 `f5c1c9d652d74ce11bcc381df4155027ec5a713e`, the exact certified/published
 Prompt 2 commit. The earlier 304/271/575 results above are historical.
-The current certified baseline is **260 unit / 276 integration / 536 total**.
+That certified baseline was **260 unit / 276 integration / 536 total**.
 
 A disposable parent candidate carried this pin and current parent metadata. A
 fresh clone of that candidate ran `make setup` against canonical child remotes.
@@ -336,3 +336,61 @@ command is available. Generated content is an Item/Action skeleton, not User
 business logic or authentication. The real User service remains unscaffolded;
 TODO.md and User/App/Wiki/RoadToTheFinal pins are preserved. Real-workspace
 prerequisites and an explicit separate task are required before real scaffolding.
+
+## MetaController template adoption and generated User certification
+
+The parent adopts the certified and published template commit
+`07a75b4a8e6e83429c41c51527691870884d76e8`, replacing
+`f5c1c9d652d74ce11bcc381df4155027ec5a713e`. The current baseline is
+**260 unit / 293 integration / 553 total**. No scaffold implementation or runtime
+topology changes were needed.
+
+A fresh disposable clone of the parent candidate ran `make setup` against canonical
+child remotes. Its exact User placeholder alone received `feat/architecture-prototype`.
+Production DOMAIN=User dry run and scaffold passed. Independent literal byte/path
+transformation verified all **141 files**, modes, one-to-one mapping, no missing or
+extra files, no collisions and zero residual reserved tokens. Dry run wrote nothing;
+installation preserved Git metadata, origin, branch, HEAD/history and index. Actual
+and preview repeats refused both dirty and committed generated destinations.
+
+Working parent and fresh candidate each passed **25 transformer / 67 scaffold /
+19 workspace tests**, with no failures or skips. Real parent build/run/migrate/test/
+smoke refused the incomplete active User contract before partial execution.
+
+The generated service passed:
+
+- Unit **260**, integration **293**, full **553**, zero failures/skips and exact
+  certified discovery counts. Controllers, including MetaController, remain
+  integration-only; logic, provider/framework and test-support placement is preserved.
+- Solution build with **0 warnings / 0 errors**, API publish, `UserDbContext`,
+  `20260908043250_InitialCreate`, no pending model changes, and initial/repeated
+  migration application against disposable PostgreSQL.
+- **72 live HTTP comparisons** against the exact template: two operational routes,
+  GET/HEAD/POST/OPTIONS, three Accept values and Healthy/Degraded/Unhealthy states.
+  Status, body, content type, cache headers and content-length behavior matched.
+  MetaController owns both routes; Program has no direct mappings. Predicates/tags
+  and provider logic are unchanged by the exact transformation.
+- Redis outage with healthy PostgreSQL produced **200 Degraded**; PostgreSQL outage
+  produced **503 Unhealthy** on readiness. Health remained **200 Healthy**. Recovery
+  passed; startup waits still require **200 Healthy**. Neither route appears in
+  Swagger; User identity and the Item/Action HTTP contracts are preserved.
+- LOCAL Development and DEV Staging public Make workflows, published DEV runtime
+  without source mounts, Swagger, Item/Action CRUD/cache/cascade and persistence.
+- Unmodified smoke and workflow certification: normal runs, two controlled failures
+  per script, SIGTERM cleanup, LOCAL/DEV persistence cycles and sentinel preservation.
+
+No certification-owned Docker resources remain. Container, volume and image
+inventories match the initial inventory; all user-created network IDs are unchanged.
+Docker's built-in `bridge` ID changed from `77803372f8e9` to `b8b0de50c4e2` during
+certification; no certification command targeted it. The complete workflow script
+subsequently verified unchanged unrelated resources across normal/failure/SIGTERM
+runs. This environmental difference is recorded rather than asserting identical
+initial/final network IDs.
+
+The real User remains the clean detached placeholder at
+`70c77c692993fc18e9f484bf22266a15288c0541`; no real dry run, branch or scaffold was
+performed. User/App/Wiki/RoadToTheFinal pins are unchanged. User-owned TODO.md was
+already tracked at the starting parent commit and remains byte-for-byte unchanged;
+it is excluded from this adoption commit. Generated files and certification resources
+are disposable, not parent payload. Real User scaffolding requires a separate
+explicit task and successful real preview.
