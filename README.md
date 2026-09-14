@@ -31,15 +31,18 @@ Setup prepares the **current** parent commit, initializes all five children at e
 pins, and creates only missing parent LOCAL/DEV env files. It never pulls the parent.
 Sync fast-forwards parent master and adopts only its approved child pins; it never
 changes env files. Both preserve developer work by refusing dirty or off-pin state.
-Detached child HEADs are normal. Create a child feature branch before editing or
-committing: `cd <child>` then `git switch -c <feature-branch>`.
+Owned repositories use master only; RoadToTheFinal retains its main exception.
+Detached children at pins are normal. Scaffold attaches its safe destination to
+existing master automatically during installation; preview does not attach.
 
 ## Bootstrap an approved service
 
 `make scaffold-service SERVICE=goalstats-user-service DOMAIN=User DRY_RUN=true`
 previews transforming identity in exact tracked files from the parent-pinned reference template into an approved
 placeholder. Omit `DRY_RUN=true` to install after a successful preview. The destination
-must already be clean on a `feat/*` branch at its approved placeholder commit. Parent
+must be clean on master or safely detached, with HEAD, local master, origin/master,
+parent pin and approved placeholder SHA equal. Missing/mismatched refs or another
+branch refuse; no branch is created. Scaffold remains offline after setup. Parent
 changes, including untracked TODO.md, block the command; unrelated child work does
 not. Python 3.9+ is required. No Docker or network is required after setup.
 

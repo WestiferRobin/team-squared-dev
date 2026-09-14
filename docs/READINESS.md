@@ -49,20 +49,21 @@ standalone template certification.
 
 Destination: `backend/goalstats-user-service` at placeholder commit
 `70c77c692993fc18e9f484bf22266a15288c0541`. The workspace provides both repositories
-for a later tracked template export into a user-service feature branch. No export,
+for a later tracked template export into user-service master. No export,
 branch creation, or product implementation is performed by pin adoption.
 
 ## Scaffold tooling boundary
 
 The parent now provides `make scaffold-service SERVICE=<approved-service> DOMAIN=<approved-domain>` and
-`DRY_RUN=true` for an explicitly approved placeholder on a clean feature branch.
+`DRY_RUN=true` for an explicitly approved placeholder on clean master or safely detached at its approved master pin.
 This is deterministic identity transformation using Python 3.9+, independent of
 Docker/network after setup. DOMAIN is required and registry-approved.
 It does not implement or certify the destination service. Actual-template disposable
 certification passed, including exact payload and Git preservation checks. A successful
 real dry run is still required before using it on the real user service. The real
-child still needs a feature branch; any dirty parent work must be resolved before
-preview. TODO.md is already tracked and must remain preserved.
+child needs matching existing master/origin/master refs; scaffold previews attachment
+without writes and attaches only during installation. Any dirty parent work must be
+resolved before preview. TODO.md is already tracked and must remain preserved.
 Only the certified template pin is adopted. The real user service remains untouched
 and runtime-pending. The disposable generated User skeleton passed build, EF,
 553 tests (260 unit / 293 integration) and LOCAL/DEV runtime checks. This does not certify the real placeholder

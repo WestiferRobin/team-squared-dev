@@ -99,12 +99,12 @@ class Scaffold(unittest.TestCase):
         self.commit(self.parent)
         self.src = self.parent / SOURCE_PATH
         self.dest = self.parent / DEST_PATH
-        self.git(self.dest, 'switch', '-c', 'feat/bootstrap')
+        # Default fixture is already on master; detached workflows are explicit below.
 
     def identity(self, repo):
         gitdir = Path(self.git(repo, 'rev-parse', '--absolute-git-dir'))
         return (self.git(repo, 'rev-parse', 'HEAD'),
-                self.git(repo, 'symbolic-ref', 'HEAD'), self.git(repo, 'show-ref'),
+                self.git(repo, 'branch', '--show-current'), self.git(repo, 'show-ref'),
                 self.git(repo, 'rev-list', '--all'), self.git(repo, 'config', '--local', '--list'),
                 (gitdir / 'index').read_bytes(),
                 (repo / '.git').read_bytes() if (repo / '.git').is_file() else str(gitdir))
@@ -146,6 +146,7 @@ class Scaffold(unittest.TestCase):
 
     def approve_destination(self):
         self.placeholder = self.commit(self.dest)
+        self.git(self.dest, 'update-ref', 'refs/remotes/origin/master', self.placeholder)
         self.approvals.write_text(SERVICE+'\t'+self.placeholder+'\tUser\n')
         self.commit(self.parent)
 
@@ -170,6 +171,79 @@ class Scaffold(unittest.TestCase):
         self.assertIn('ADD src/Service.cs',p.stdout)
         self.assertEqual(before,(self.tree(self.dest),self.identity(self.dest),self.identity(self.parent)))
         self.assertEqual([], list(self.base.glob('team-squared-scaffold*')))
+
+    def repository_snapshot(self):
+        return {str(p.relative_to(self.parent)): p.read_bytes()
+                for p in self.parent.rglob('*') if p.is_file()}
+
+    def test_fresh_detached_preview_then_install(self):
+        self.git(self.dest, 'checkout', '--detach', self.placeholder)
+        before = self.repository_snapshot()
+        identity = self.identity(self.dest)
+        preview = self.invoke(dry='true')
+        self.assertEqual(0, preview.returncode, preview.stdout)
+        self.assertIn('PLANNED BRANCH ACTION: ATTACH TO master', preview.stdout)
+        self.assertEqual(before, self.repository_snapshot())
+        result = self.invoke(dry='false')
+        self.assertEqual(0, result.returncode, result.stdout)
+        after = self.identity(self.dest)
+        self.assertEqual('master', after[1])
+        self.assertEqual(identity[:1] + identity[2:], after[:1] + after[2:])
+        self.assertIn(self.placeholder, self.git(self.parent, 'ls-tree', 'HEAD', DEST_PATH))
+        for dry in ['true', 'false']: self.refuse(dry=dry)
+        self.commit(self.dest)
+        for dry in ['true', 'false']: self.refuse(dry=dry)
+
+    def test_missing_and_mismatched_master_refs(self):
+        self.git(self.dest, 'checkout', '--detach')
+        for ref in ['refs/heads/master', 'refs/remotes/origin/master']:
+            self.git(self.dest, 'update-ref', '-d', ref)
+            self.refuse('is missing', dry='true')
+            self.git(self.dest, 'update-ref', ref, self.placeholder)
+        (self.dest/'README.md').write_text('new')
+        newer = self.commit(self.dest)
+        self.git(self.dest, 'checkout', '--detach', self.placeholder)
+        for ref in ['refs/heads/master', 'refs/remotes/origin/master']:
+            self.git(self.dest, 'update-ref', ref, newer)
+            self.refuse('must match', dry='false')
+            self.git(self.dest, 'update-ref', ref, self.placeholder)
+
+    def test_master_owned_by_linked_worktree(self):
+        self.git(self.dest, 'checkout', '--detach')
+        self.git(self.dest, 'worktree', 'add', str(self.base/'linked'), 'master')
+        for dry in ['true', 'false']: self.refuse('another worktree', dry=dry)
+
+    def test_attachment_failure(self):
+        self.git(self.dest, 'checkout', '--detach')
+        env=self.wrapper('git', 'for arg in "$@"; do if [[ "$arg" == "scaffold: attach approved destination to master" ]]; then exit 17; fi; done\nexec /usr/bin/git "$@"\n')
+        self.refuse('could not attach', dry='false', env=env)
+        self.assertEqual('', self.git(self.dest, 'branch', '--show-current'))
+
+    def test_attachment_preserves_placeholder_before_copy(self):
+        self.git(self.dest, 'checkout', '--detach')
+        before=self.tree(self.dest), self.identity(self.dest)
+        env=self.wrapper('cp', 'case "$1" in */backend/goalstats-user-service/README.md) exit 17 ;; esac\nexec /bin/cp "$@"\n')
+        result=self.invoke(dry='false', env=env)
+        self.assertNotEqual(0, result.returncode)
+        self.assertEqual(before[0], self.tree(self.dest))
+        after=self.identity(self.dest)
+        self.assertEqual('master', after[1])
+        self.assertEqual(before[1][:1]+before[1][2:], after[:1]+after[2:])
+
+    def test_post_attachment_ref_change_refused(self):
+        self.git(self.dest, 'checkout', '--detach')
+        env=self.wrapper('git', '/usr/bin/git "$@" || exit $?\nfor arg in "$@"; do if [[ "$arg" == "scaffold: attach approved destination to master" ]]; then /usr/bin/git -C "'+str(self.dest)+'" update-ref -d refs/remotes/origin/master; fi; done\n')
+        self.refuse('is missing', dry='false', env=env)
+        self.assertEqual('master', self.git(self.dest, 'branch', '--show-current'))
+
+    def test_branch_change_during_preparation(self):
+        self.git(self.dest, 'checkout', '--detach')
+        env=self.wrapper('tar', '/usr/bin/tar "$@" || exit $?\n/usr/bin/git -C "'+str(self.dest)+'" symbolic-ref HEAD refs/heads/master\n')
+        self.refuse('branch changed during preparation', dry='true', env=env)
+
+    def test_ref_change_during_preparation(self):
+        env=self.wrapper('tar', '/usr/bin/tar "$@" || exit $?\n/usr/bin/git -C "'+str(self.dest)+'" update-ref -d refs/remotes/origin/master\n')
+        self.refuse('is missing', dry='false', env=env)
 
     def test_invalid_dry_run(self):
         for value in ['', 'yes', '1', 'TRUE', 'false;echo invalid']:
@@ -226,11 +300,11 @@ class Scaffold(unittest.TestCase):
         self.refuse('initialized')
 
     def test_destination_branches(self):
-        for branch in ['master','main','fix/bootstrap']:
+        for branch in ['main','feat/bootstrap','fix/bootstrap','feature/x','develop','dev','other']:
             self.git(self.dest,'switch','-C',branch)
-            self.refuse('feat/')
+            self.refuse('destination must be master')
         self.git(self.dest,'checkout','--detach')
-        self.refuse('feat/')
+        self.assertEqual(0, self.invoke(dry='true').returncode)
 
     def test_destination_dirty_staged_custom_readme(self):
         (self.dest/'README.md').write_text('valuable work')
@@ -455,10 +529,12 @@ class Scaffold(unittest.TestCase):
         p=self.invoke();self.assertEqual(0,p.returncode,p.stdout)
 
     def test_network_commands_never_attempted(self):
+        self.git(self.dest, 'checkout', '--detach')
         log=self.base/'network-attempts'
         env=self.wrapper('git','for arg in "$@"; do\n case "$arg" in fetch|pull|ls-remote|clone) echo attempted >> "'+str(log)+'"; exit 88 ;; esac\ndone\nexec /usr/bin/git "$@"\n')
-        p=self.invoke(env=env)
-        self.assertEqual(0,p.returncode,p.stdout)
+        for dry in ['true', 'false']:
+            p=self.invoke(env=env, dry=dry)
+            self.assertEqual(0,p.returncode,p.stdout)
         self.assertFalse(log.exists())
 
     def test_inactive_destination_refused(self):
@@ -516,6 +592,7 @@ class Scaffold(unittest.TestCase):
             self.refuse('SERVICE must',service=value)
 
     def test_two_simultaneous_operations(self):
+        self.git(self.dest, 'checkout', '--detach')
         entered=self.base/'archive-entered';release=self.base/'archive-release'
         env=self.wrapper('tar','touch "'+str(entered)+'"\nfor attempt in {1..200}; do\n [[ ! -e "'+str(release)+'" ]] || exec /usr/bin/tar "$@"\n sleep 0.1\ndone\nexit 17\n')
         first=subprocess.Popen(['make','scaffold-service','SERVICE='+SERVICE,'DOMAIN=User','DRY_RUN=true'],
@@ -525,7 +602,8 @@ class Scaffold(unittest.TestCase):
             while not entered.exists() and first.poll() is None and time.monotonic()<deadline:
                 time.sleep(0.05)
             self.assertTrue(entered.exists(),'First operation never reached its locked export phase')
-            self.refuse('Scaffold lock exists',dry='true')
+            self.refuse('Scaffold lock exists',dry='false')
+            self.assertEqual('', self.git(self.dest, 'branch', '--show-current'))
             release.touch()
             output,_=first.communicate(timeout=15)
             self.assertEqual(0,first.returncode,output)
@@ -571,11 +649,12 @@ exec /usr/bin/python3 -c 'import sys; sys.version_info=(3,8,0); exec(sys.argv[1]
 
     def test_domain_dry_run_summary(self):
         p=self.invoke(dry='true');self.assertEqual(0,p.returncode,p.stdout)
-        for text in ['SERVICE='+SERVICE,'DOMAIN=User',self.source_pin,self.placeholder,'feat/bootstrap','GoalStats.Template -> GoalStats.User','TemplateDbContext -> UserDbContext','goalstats-template -> goalstats-user','goalstats_template -> goalstats_user','RENAME GoalStats.Template.sln -> GoalStats.User.sln']:
+        for text in ['SERVICE='+SERVICE,'DOMAIN=User',self.source_pin,self.placeholder,'PLANNED BRANCH ACTION: NONE','GoalStats.Template -> GoalStats.User','TemplateDbContext -> UserDbContext','goalstats-template -> goalstats-user','goalstats_template -> goalstats_user','RENAME GoalStats.Template.sln -> GoalStats.User.sln']:
             self.assertIn(text,p.stdout)
 
 
     def test_two_operations_during_transformation(self):
+        self.git(self.dest, 'checkout', '--detach')
         entered=self.base/'transform-entered';release=self.base/'transform-release'
         env=self.wrapper('python3','for arg in "$@"; do\n case "$arg" in --source=*) touch "'+str(entered)+'"; for attempt in {1..200}; do [[ ! -e "'+str(release)+'" ]] || exec /usr/bin/python3 "$@"; sleep 0.1; done; exit 17 ;; esac\ndone\nexec /usr/bin/python3 "$@"\n')
         first=subprocess.Popen(['make','scaffold-service','SERVICE='+SERVICE,'DOMAIN=User','DRY_RUN=true'],cwd=self.parent,env=env,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
@@ -583,7 +662,8 @@ exec /usr/bin/python3 -c 'import sys; sys.version_info=(3,8,0); exec(sys.argv[1]
             deadline=time.monotonic()+15
             while not entered.exists() and first.poll() is None and time.monotonic()<deadline: time.sleep(0.05)
             self.assertTrue(entered.exists(),'Did not reach locked transformation')
-            self.refuse('Scaffold lock exists',dry='true')
+            self.refuse('Scaffold lock exists',dry='false')
+            self.assertEqual('', self.git(self.dest, 'branch', '--show-current'))
             release.touch();output,_=first.communicate(timeout=15)
             self.assertEqual(0,first.returncode,output)
         finally:

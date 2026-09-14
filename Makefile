@@ -19,7 +19,7 @@ help:
 	  '  make setup                   Prepare this checkout and missing env files; no Docker' \
 	  '  make sync                    Fast-forward parent master; synchronize approved pins; no Docker' \
 	  '  make scaffold-service SERVICE=<service> DOMAIN=<Domain>  Transform pinned template identity' \
-	  '    Requires clean feat/* destination branch. Preview with DRY_RUN=true.' \
+	  '    Safe pinned detached/master destination; actual attaches to master.' \
 	  '' 'FULL STACK' \
 	  '  make build [ENV=local|dev]    Build every active image' \
 	  '  make run [ENV=local|dev]      Start one box; wait for required readiness' \
@@ -31,7 +31,7 @@ help:
 	  '  make smoke [ENV=local|dev]    Check the running box and internal connectivity' \
 	  '' 'ENV defaults to local. LOCAL: developer containers. DEV: built verification containers.' \
 	  'First use: make setup. Runtime later: make migrate; make run.' \
-	  'Create a child feature branch before committing; use its own make help.' \
+	  'Scaffold previews without writes; no feature branch required. Use child make help.' \
 	  'Active contracts must be complete before the box can build or run.' \
 	  'goalstats-user-service runtime contract pending; references and docs are non-runtime.' \
 	  'See docs/READINESS.md and docs/DEVELOPMENT.md.'

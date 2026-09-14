@@ -394,3 +394,62 @@ already tracked at the starting parent commit and remains byte-for-byte unchange
 it is excluded from this adoption commit. Generated files and certification resources
 are disposable, not parent payload. Real User scaffolding requires a separate
 explicit task and successful real preview.
+
+## Safe master auto-attach implementation (Prompt 1)
+
+This supersedes earlier feature-branch prerequisite guidance; historical certification
+records above describe the workflow tested at that time. Owned repos now use master;
+RoadToTheFinal remains the main exception. Preview accepts a clean, exact approved
+detached destination with matching local master/origin/master and performs no
+repository writes. Actual installation attaches only after payload preparation and
+revalidates identity before copying files. Scaffold remains offline after setup.
+
+Prompt 1 automated fixture validation covers detached/master preview and installation,
+identity preservation, linked-worktree refusal, attachment failure and concurrent
+state changes. Full real-template fresh-clone certification and publication belong
+to Prompt 2. The real User remains untouched and unscaffolded.
+
+Automated validation passed: **75 scaffold / 25 transformer / 19 workspace tests**,
+zero failures or skips. Shell/Python syntax, make help and diff whitespace checks
+passed. The disposable detached preview/install sequence passed without manual
+branch attachment between commands. Child pins, real User and TODO.md are unchanged;
+no staging, commit or push was performed in Prompt 1.
+
+## Safe master auto-attach certification (Prompt 2)
+
+Two independent fresh disposable clones of the final parent candidate ran normal
+`make setup`, then DOMAIN=User preview and installation without any manual child
+branch commands. Both began detached at the exact approved User pin. Preview
+preserved complete repository file bytes/modes, including refs, reflogs, config,
+indexes and placeholders. Installation attached only the destination to existing
+master without moving HEAD or refs; the parent gitlink remained unchanged.
+Independent literal transformation verified all **141 files**, paths, bytes and
+modes with zero residual reserved tokens, missing/extra files or collisions.
+Dirty and committed repeats refused both preview and actual installation.
+
+Parent suites passed **75 scaffold / 25 transformer / 19 workspace tests**, with
+zero failures or skips. Fixtures covered already-master preview/install, linked
+worktrees, missing/mismatched refs, incorrect branches, operations, dirty content,
+locking, preparation races, attachment failure, post-attachment refusal and
+mid-install recovery. Shell/Python syntax, help and diff checks passed. Scaffold
+remains offline after setup; setup/sync Git behavior and DOMAIN transformation
+are unchanged. Real parent runtime commands still refused incomplete User contracts
+before partial work.
+
+Generated User passed **260 unit / 293 integration / 553 total** with zero
+failures/skips, matching the certified template. Solution build had **0 warnings /
+0 errors**; API publish passed. EF verified UserDbContext,
+`20260908043250_InitialCreate` and no pending model changes. MetaController and
+integration-only controller architecture were preserved exactly.
+
+Generated smoke and unchanged workflow certification passed LOCAL/DEV, Swagger,
+Item/Action CRUD/cache/cascade, PostgreSQL/Redis, repeated persistence cycles,
+controlled failures and SIGTERM cleanup. Additional hosted GET/HEAD/POST/OPTIONS
+checks verified health remained 200 Healthy, readiness became 200 Degraded with
+Redis unavailable and 503 Unhealthy with PostgreSQL unavailable, then recovered.
+Plain-text/cache behavior and Healthy-only waits were preserved.
+
+Final Docker container, network, volume and image inventories exactly matched the
+initial inventory. Certification-owned resources were removed. All child pins,
+TODO.md and the real User placeholder were unchanged. Owned repositories retained
+master only; RoadToTheFinal retained main. No real User preview/scaffold was run.

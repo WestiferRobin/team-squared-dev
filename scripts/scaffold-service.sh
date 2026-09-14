@@ -2,7 +2,7 @@
 # Exact tracked-file bootstrap; Bash 3.2, Git, tar, Python 3.9+ and ordinary OS utilities.
 set -euo pipefail
 export GIT_OPTIONAL_LOCKS=0 GIT_NO_LAZY_FETCH=1 GIT_ALLOW_PROTOCOL=''
-# Disable status helpers; no network, filters, checkout, or index writes are needed.
+# Disable status helpers; attachment uses symbolic HEAD only, never checkout/network.
 git() { command git -c core.fsmonitor=false -c submodule.recurse=false "$@"; }
 cd "$(dirname "$0")/.."
 root=$(pwd -P)
@@ -134,8 +134,24 @@ state_check() {
   repo_check "$src" "$source_path" "$source_sha" "$source_url"
   repo_check "$dest" "$dest_path" "$dest_sha" "$dest_url"
   [[ "$dest_sha" == "$approved" ]] || fail 'Destination pin differs from approved placeholder commit.'
-  branch=$(git -C "$dest" symbolic-ref --quiet --short HEAD || true)
-  [[ "$branch" == feat/?* ]] || fail 'Destination must already be on feat/<nonempty-name>; no branch is created automatically.'
+  branch=$(git -C "$dest" symbolic-ref --quiet HEAD || true)
+  [[ -z "$branch" || "$branch" == refs/heads/master ]] || fail 'destination must be master or safely detached at the approved master pin.'
+  [[ -z "$branch" ]] || branch=master
+  for ref in refs/heads/master refs/remotes/origin/master; do
+    [[ -z "$(git -C "$dest" symbolic-ref -q "$ref" || true)" ]] || fail 'Master refs must be ordinary commit refs.'
+    git -C "$dest" show-ref --verify --quiet "$ref" || fail 'local master or origin/master is missing; no branch was created.'
+  done
+  master_sha=$(git -C "$dest" rev-parse refs/heads/master)
+  tracking_sha=$(git -C "$dest" rev-parse refs/remotes/origin/master)
+  [[ "$master_sha" == "$approved" && "$tracking_sha" == "$approved" ]] || fail 'destination HEAD, master, origin/master and approved placeholder pin must match.'
+  # Plumbing attachment must enforce the branch ownership normally checked by switch.
+  worktrees=$(git -C "$dest" worktree list --porcelain)
+  owners=$(printf '%s\n' "$worktrees" | python3 -I -B -c 'import sys; print(sum(x == "branch refs/heads/master" for x in sys.stdin.read().splitlines()))')
+  if [[ -z "$branch" ]]; then
+    [[ "$owners" == 0 ]] || fail 'master is already checked out in another worktree.'
+  else
+    [[ "$owners" == 1 ]] || fail 'master is already checked out in another worktree.'
+  fi
   [[ -z "$(git -C "$dest" ls-files --others --ignored --exclude-standard)" ]] || fail 'Ignored destination files must be preserved outside the destination before scaffolding.'
 }
 state_check
@@ -261,7 +277,7 @@ identity() {
   [[ "$index" == /* ]] || index="$repo/$index"
   printf 'repo %s\ngitdir %s\n' "$repo" "$gitdir"
   git -C "$repo" rev-parse HEAD
-  git -C "$repo" symbolic-ref --quiet HEAD || true
+  [[ "${2:-}" == attachment ]] || git -C "$repo" symbolic-ref --quiet HEAD || true
   git -C "$repo" show-ref || true
   git -C "$repo" config --local --list
   git hash-object --no-filters -- "$index"
@@ -269,6 +285,7 @@ identity() {
 }
 identity "$root" > "$scratch/parent.identity"
 identity "$dest" > "$scratch/dest.identity"
+identity "$dest" attachment > "$scratch/dest.attachment-before"
 current_path='archive/export'
 git -C "$src" -c tar.umask=0022 archive --format=tar "$source_sha" > "$scratch/template.tar"
 tar -xpf "$scratch/template.tar" -C "$scratch/payload"
@@ -288,14 +305,6 @@ done < "$scratch/manifest.tsv"
 verify_payload "$scratch/output"
 ignore_check
 
-printf 'Scaffold (DRY_RUN=%s)\nSource: %s @ %s\nDestination: %s @ %s [%s]\n' "$dry" "$source_path" "$source_sha" "$dest_path" "$dest_sha" "$branch"
-while IFS= read -r path; do
-  case "$path" in README.md|.gitignore) printf '  REPLACE approved placeholder %s\n' "$path" ;; *) printf '  ADD %s\n' "$path" ;; esac
-done < "$scratch/paths"
-if [[ "$dry" == true ]]; then
-  echo 'Dry run validated. No repository files or Git state were changed.'
-  exit 0
-fi
 current_path='pre-install validation'
 state_check
 [[ "$branch" == "$initial_branch" ]] || fail 'Destination branch changed during preparation.'
@@ -304,6 +313,42 @@ identity "$root" > "$scratch/parent.recheck"
 identity "$dest" > "$scratch/dest.recheck"
 cmp -s "$scratch/parent.identity" "$scratch/parent.recheck" || fail 'Parent Git identity changed during preparation.'
 cmp -s "$scratch/dest.identity" "$scratch/dest.recheck" || fail 'Destination Git identity changed during preparation.'
+if [[ -z "$branch" ]]; then
+  echo 'DESTINATION STATE: DETACHED AT APPROVED PIN'
+  echo 'PLANNED BRANCH ACTION: ATTACH TO master'
+  echo 'Destination is detached at the approved master pin; scaffold would attach it to master before installation.'
+else
+  echo 'DESTINATION STATE: master'
+  echo 'PLANNED BRANCH ACTION: NONE'
+fi
+printf 'DESTINATION HEAD: %s\nMASTER HEAD: %s\nORIGIN/MASTER HEAD: %s\nPLACEHOLDER SHA: %s\n' "$dest_sha" "$master_sha" "$tracking_sha" "$approved"
+printf 'Scaffold (DRY_RUN=%s)\nSource: %s @ %s\nDestination: %s @ %s [%s]\n' "$dry" "$source_path" "$source_sha" "$dest_path" "$dest_sha" "$branch"
+while IFS= read -r path; do
+  case "$path" in README.md|.gitignore) printf '  REPLACE approved placeholder %s\n' "$path" ;; *) printf '  ADD %s\n' "$path" ;; esac
+done < "$scratch/paths"
+if [[ "$dry" == true ]]; then
+  echo 'Dry run validated. No repository files or Git state were changed.'
+  exit 0
+fi
+if [[ -z "$branch" ]]; then
+  current_path='master attachment'
+  if ! git -C "$dest" symbolic-ref -m "scaffold: attach approved destination to master" HEAD refs/heads/master; then
+    git -C "$dest" status --short --branch >&2 || true
+    git -C "$dest" rev-parse HEAD >&2 || true
+    operational 'could not attach destination to master. No scaffold files were written.'
+  fi
+  echo "Attached $dest_path to master at $dest_sha."
+fi
+current_path='post-attachment validation (no scaffold files written)'
+state_check
+[[ "$branch" == master ]] || fail 'Destination changed after attachment; no scaffold files were written.'
+placeholder_check
+identity "$dest" attachment > "$scratch/dest.attachment-after"
+cmp -s "$scratch/dest.attachment-before" "$scratch/dest.attachment-after" || fail 'Destination identity changed during attachment; no scaffold files were written.'
+identity "$root" > "$scratch/parent.recheck"
+cmp -s "$scratch/parent.identity" "$scratch/parent.recheck" || fail 'Parent Git identity changed during attachment.'
+# Preserve the original evidence; installation has its own verified baseline.
+identity "$dest" > "$scratch/dest.installation"
 cp "$dest/README.md" "$scratch/original/README.md"
 cp "$dest/.gitignore" "$scratch/original/.gitignore"
 : > "$scratch/completed.txt"
@@ -322,9 +367,9 @@ verify_payload "$dest"
 identity "$root" > "$scratch/parent.after"
 identity "$dest" > "$scratch/dest.after"
 cmp -s "$scratch/parent.identity" "$scratch/parent.after" || operational 'Parent Git identity changed.'
-cmp -s "$scratch/dest.identity" "$scratch/dest.after" || operational 'Destination Git identity changed.'
+cmp -s "$scratch/dest.installation" "$scratch/dest.after" || operational 'Destination Git identity changed.'
 rm "$journal/recovery-directory"
 rmdir "$journal"
 success=1
-printf 'Scaffold complete from %s. Child files are intentionally unstaged; parent pin and Git identity are unchanged.\n' "$source_sha"
+printf 'Scaffold complete from %s. Child files are intentionally unstaged; parent pin and post-attachment Git identity are unchanged.\n' "$source_sha"
 echo 'Review child git status --short and git diff, including untracked files. Identity transformation only; Item/Action and migration operations are unchanged. No runtime certification was performed.'

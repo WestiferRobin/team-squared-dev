@@ -190,7 +190,7 @@ main() {
   fi
   echo 'Workspace ready. Submodules are at approved commits; runtime readiness is separate.'
   report "$root"
-  echo 'Detached HEAD is normal. Before editing a child: cd <child>; git switch -c <feature-branch>'
+  echo 'Detached HEAD at a pin is normal. Scaffold previews without writes and safely attaches its approved destination to master on installation.'
   echo 'Docker is needed only for container workflows. goalstats-user-service remains runtime-pending until implemented.'
 }
 main "$@"

@@ -73,24 +73,24 @@ fetch; an already complete offline setup does not probe GitHub unnecessarily.
 
 ```bash
 cd backend/goalstats-user-service
-git switch -c feat/architecture-prototype
+# Service scaffold has already attached this destination to master.
 # edit/test using the child's available tools
 # review changes before staging
 git add .
 git commit -m "Implement architecture prototype"
-git push -u origin feat/architecture-prototype
+git push origin master
 ```
 
 The same independent-repository workflow applies to `frontend/goal-stats-app` and
-`docs/goal-stats-wiki`: enter the child, create a feature branch, edit/test, and
+`docs/goal-stats-wiki`: enter the clean child, deliberately select its master for development, edit/test, and
 commit/publish there. App standalone manual runtime verification remains pending.
 Wiki edits do not change the parent pin until an approved wiki commit is integrated.
 
 For the upcoming user-service bootstrap, the tracked template source is
 `backend/template-goalstats-service` at `07a75b4a8e6e83429c41c51527691870884d76e8`;
 the destination remains `backend/goalstats-user-service` at
-`70c77c692993fc18e9f484bf22266a15288c0541`. Create the destination feature branch
-before a later tracked export and implementation. Pin adoption performs neither.
+`70c77c692993fc18e9f484bf22266a15288c0541`. Scaffold previews safe attachment and attaches the destination to master only on
+installation. No manual child branch command is needed. Pin adoption performs neither.
 The template and RoadToTheFinal remain references, excluded from active composition.
 
 Parent status may show a modified child because its content is dirty or HEAD differs
@@ -173,7 +173,9 @@ Only the parent, template, and destination receive relevant safety checks. Unrel
 child dirty/off-pin state is allowed, but parent staged gitlink changes are refused.
 The source and destination must be clean and at their pins, with canonical origins
 and no in-progress Git operations. Destination HEAD must also match its approved
-placeholder SHA and an existing `feat/<nonempty-name>` branch. No branch is created.
+placeholder SHA. HEAD, existing local master and local origin/master must all equal
+that SHA and the parent pin. Only master or detached HEAD is accepted; another
+worktree owning master refuses. No branch is created or reset.
 Parent staged/unstaged/untracked work, including TODO.md, causes refusal. Preserve
 and resolve that work deliberately; the command never moves/deletes/ignores it.
 
@@ -199,7 +201,7 @@ allowed. Ignored source files never enter the tracked-file archive.
 Dry run performs the same checks and temporary export verification, prints exact
 SERVICE, DOMAIN, source/destination identities, four mappings, renames and additions/replacements, and changes no repository
 files, refs, index, or configuration. It is a preview, not a reservation: actual
-installation revalidates the repositories and feature branch before writing.
+installation revalidates the repositories and branch state before writing.
 
 A workspace-exclusive empty lock directory lives under `/tmp`, independent of TMPDIR.
 If it exists, the command reports its exact path and refuses. Check that no scaffold
@@ -207,13 +209,15 @@ is running before manually removing a stale empty lock. No daemon is involved.
 
 Before installing, the helper stores original placeholders and Git identity
 snapshots in private temporary storage. It installs only manifest-listed files,
-then verifies payload and preserved Git identity. `.git`, origin, refs, HEAD, branch,
+then verifies payload and preserved post-attachment Git identity. `.git`, origin, refs, HEAD, branch,
 and indexes remain unchanged; no stage, commit, push, or parent pin update occurs.
 The parent displays dirty child content; the child contains modified placeholders
 and untracked new source files. This is expected. Do not run setup/sync to discard it.
 
-Installation is not atomic. Pre-install failures clean up owned temporary files
-without changing the destination. Once installation starts, a failure preserves a
+Installation is not atomic. Preparation failures clean up owned temporary files
+without changing the destination. A failure after attachment may leave master
+attached, without payload writes; no automatic detach/reset occurs. Once payload
+installation starts, a failure preserves a
 recovery directory containing source SHA, DOMAIN, policy version, source manifest,
 source-to-output mapping, transformed manifest, original placeholders, Git identity,
 completed.txt and failed-phase.txt,
@@ -227,9 +231,6 @@ Beginner workflow for an approved scaffolding task:
 
 ```bash
 make setup
-
-git -C backend/goalstats-user-service \
-  switch -c feat/architecture-prototype
 
 make scaffold-service \
   SERVICE=goalstats-user-service DOMAIN=User \
@@ -249,7 +250,7 @@ Item/Action remain examples; business-domain generation is outside this command.
 Migration IDs, Up/Down operations, routes, DTO names and SQL tables remain unchanged.
 Do not delete migrations as part of identity adaptation.
 
-Commit and publish reviewed implementation inside the child feature branch. Only
+Commit and publish reviewed implementation on child master. Only
 later integrate an approved published commit through a deliberate parent gitlink
 update. Scaffolding never stages that pointer. The reference template remains
 excluded from normal active runtime/testing.
@@ -360,3 +361,24 @@ or `bash scripts/workspace.sh status`.
 
 The wiki is documentation; the template and RoadToTheFinal are references. All are
 pinned and synchronized but excluded from normal runtime and active tests.
+
+### Safe master attachment
+
+Owned repos use master only; RoadToTheFinal keeps its main exception. Setup/sync
+still materialize approved commits, normally detached. No manual child branch
+command is needed for the bootstrap sequence above.
+
+Preview validates safe attachment and reports the planned action without changing
+repository files, HEAD, refs, reflogs or index. Actual scaffold prepares and validates
+all transformed output first, then attaches only the approved destination to existing
+master using symbolic-ref. HEAD commit, refs, config/origin, index bytes, placeholder
+bytes and parent gitlink must remain unchanged. Only symbolic HEAD and its normal
+HEAD reflog entry may change. Installation uses a verified post-attachment identity.
+
+Scaffold remains offline: local origin/master is a consistency check, not a claim
+about the live remote. Missing/mismatched refs, unexpected branches, dirty files,
+operations or another worktree owning master refuse without automatic repair.
+Attachment and post-attachment failures write no scaffold payload and do not reset
+or detach again; inspect the reported state. The external scaffold lock covers
+preparation, attachment and installation, but cannot prevent manual Git changes.
+All existing parent cleanliness, placeholder and repeat-run guards remain active.
