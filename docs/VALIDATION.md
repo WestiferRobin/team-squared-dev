@@ -453,3 +453,68 @@ Final Docker container, network, volume and image inventories exactly matched th
 initial inventory. Certification-owned resources were removed. All child pins,
 TODO.md and the real User placeholder were unchanged. Owned repositories retained
 master only; RoadToTheFinal retained main. No real User preview/scaffold was run.
+
+## Real-workspace attachment config fix (Prompt 1)
+
+A deterministic real-submodule regression reproduced the published failure before
+the fix: VS Code adding `branch.master.vscode-merge-base=origin/master` immediately
+after symbolic HEAD attachment caused full-config identity comparison to refuse.
+The comparison now parses local config entries and permits only that absent-to-single
+value transition during attachment. Existing entries and all other config remain
+strict. HEAD reflog verification permits exactly the approved same-commit attachment
+entry, preserving prior history; installation uses a strict post-attachment baseline.
+
+Attachment failures retain private temporary diagnostics instead of deleting the
+only evidence. Already-master preview reports `MASTER AT APPROVED PIN`, with no
+attachment comparison or branch action. Full certification/publication is reserved
+for Prompt 2. The real User remains on master, clean and unscaffolded.
+
+Prompt 1 validation passed **84 scaffold / 25 transformer / 19 workspace tests**,
+zero failures/skips, plus shell/embedded-Python syntax, make help and diff checks.
+The injected exact VS Code addition failed against the pre-fix implementation and
+passed after the fix. Wrong/duplicate metadata, removals/replacements, other config
+changes, extra reflog entries and index mutation refused without payload writes.
+Existing-metadata detached and already-master paths passed. No real User command,
+pin change, staging, commit or push was performed.
+
+## Real-workspace attachment config certification (Prompt 2)
+
+Two fresh disposable clones ran normal setup against canonical child remotes. The
+detached case ran preview and actual scaffold without manual child branch commands;
+a Git wrapper injected exactly the VS Code config addition immediately after the
+real symbolic-ref operation. The other clone started on approved master with the
+metadata already present. Both previews preserved complete repository bytes/modes.
+Both installations passed production identity checks and independent literal
+DOMAIN=User transformation equality for all **141 files**, including paths, bytes,
+modes, no collisions/extras/missing files and zero residual reserved tokens.
+Git metadata comparisons preserved refs/index/config except the explicitly approved
+detached attachment artifacts. Prior HEAD reflog history and one expected attachment
+entry were verified. Dirty and committed repeats refused both commands.
+
+Parent certification passed **84 scaffold / 25 transformer / 19 workspace tests**,
+zero failures/skips, including wrong/duplicate/removed/replaced metadata, unrelated
+config mutations, extra reflog entries, index changes, retained private diagnostics,
+linked worktrees, operations, races and repeat refusal. Shell/embedded-Python syntax,
+help and diff checks passed. No production changes beyond Prompt 1 were required.
+
+Generated User passed **260 unit / 293 integration / 553 total** with no failures
+or skips, matching the template. Solution build had **0 warnings / 0 errors**; API
+publish passed. EF verified UserDbContext, `20260908043250_InitialCreate` and no
+pending model changes. MetaController and integration-only controller architecture
+were preserved. Smoke and unchanged workflow certification passed LOCAL/DEV,
+Swagger, Item/Action CRUD/cache/cascade, PostgreSQL/Redis, persistence, controlled
+failures and SIGTERM cleanup. Additional hosted method checks verified Healthy,
+200 Degraded during Redis outage, 503 Unhealthy during PostgreSQL outage, recovery
+and plain-text/cache behavior. Real parent runtime guards refused before partial work.
+
+No certification-owned Docker resources remain. Container, volume and image
+inventories and all user-created network IDs match the initial inventory. Docker's
+built-in bridge ID changed from `d4a0b64a2881` to `bba9250b7d0e`; no certification
+command targeted it. The complete workflow script preserved unrelated resources
+across its normal/failure/SIGTERM checks. This environmental observation is recorded
+rather than claiming identical initial/final network IDs.
+
+The complete real User worktree/Git-file snapshot and TODO.md remained unchanged.
+Real User is still clean on master at the approved placeholder with its existing
+VS Code metadata; no real preview or scaffold was run. All child pins and the
+RoadToTheFinal main exception are unchanged.

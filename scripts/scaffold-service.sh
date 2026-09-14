@@ -10,7 +10,7 @@ fail() { echo "Scaffold refused: $*" >&2; exit 2; }
 operational() { echo "Scaffold failed: $*" >&2; exit 1; }
 source "$root/scripts/git-safety.sh"
 source_path=backend/template-goalstats-service
-scratch='' lock='' journal='' installing=0 success=0 current_path='(preparation)'
+scratch='' lock='' journal='' installing=0 success=0 retain_evidence=0 current_path='(preparation)'
 finish() {
   local code=$?
   trap - EXIT
@@ -20,6 +20,33 @@ finish() {
     echo "Recovery directory: $scratch; operation indicator: $journal" >&2
     echo 'Inspect completed.txt, the manifest, and original placeholders. Preserve work and reconcile manually before removing the indicator. Rerun is refused.' >&2
     code=1
+  elif [[ "$retain_evidence" == 1 && -n "$scratch" ]]; then
+    printf 'phase: %s\nNo scaffold payload writes started. Inspect current state before retry.\n' "$current_path" > "$scratch/failure-summary.txt"
+    python3 -I -B - "$scratch" "$dest" "$root" "$dest_path" <<'PYDIAGNOSTIC' || true
+import json, subprocess, sys
+from pathlib import Path
+scratch, dest, parent, path = sys.argv[1:]
+def read(*args):
+    p = subprocess.run(['git', '-c', 'core.fsmonitor=false', *args], capture_output=True, text=True)
+    return p.stdout.strip() if p.returncode == 0 else '(unavailable)'
+evidence = {'head_state': read('-C', dest, 'symbolic-ref', '-q', 'HEAD'),
+            'head_commit': read('-C', dest, 'rev-parse', 'HEAD'),
+            'master': read('-C', dest, 'rev-parse', 'refs/heads/master'),
+            'origin_master': read('-C', dest, 'rev-parse', 'refs/remotes/origin/master'),
+            'parent_pin': read('-C', parent, 'ls-tree', 'HEAD', '--', path)}
+for label, a, b in [('attachment_identity_equal', 'dest.attachment-before', 'dest.attachment-after'),
+                    ('parent_identity_equal', 'parent.identity', 'parent.recheck')]:
+    x, y = Path(scratch)/a, Path(scratch)/b
+    evidence[label] = x.read_bytes() == y.read_bytes() if x.exists() and y.exists() else None
+x, y = Path(scratch)/'dest.attachment-before', Path(scratch)/'dest.attachment-after'
+if x.exists() and y.exists():
+    before, after = x.read_bytes().splitlines(), y.read_bytes().splitlines()
+    evidence['index_equal'] = before[-2] == after[-2]
+    evidence['refs_equal'] = before[3:-2] == after[3:-2]
+evidence['parent_pin_matches_head'] = evidence['head_commit'] in evidence['parent_pin']
+(Path(scratch)/'state-summary.json').write_text(json.dumps(evidence, indent=2) + '\n')
+PYDIAGNOSTIC
+    echo "Attachment diagnostic evidence retained: $scratch" >&2
   elif [[ -n "$scratch" ]]; then
     rm -rf -- "$scratch"
   fi
@@ -271,7 +298,7 @@ verify_payload() {
   cmp -s "$scratch/actual-paths" "$scratch/expected-paths" || payload_error 'Payload paths differ from the committed tree.'
 }
 identity() {
-  local repo=$1 gitdir index
+  local repo=$1 gitdir index reflog
   gitdir=$(git -C "$repo" rev-parse --absolute-git-dir)
   index=$(git -C "$repo" rev-parse --git-path index)
   [[ "$index" == /* ]] || index="$repo/$index"
@@ -279,13 +306,22 @@ identity() {
   git -C "$repo" rev-parse HEAD
   [[ "${2:-}" == attachment ]] || git -C "$repo" symbolic-ref --quiet HEAD || true
   git -C "$repo" show-ref || true
-  git -C "$repo" config --local --list
+  if [[ "${2:-}" != attachment ]]; then
+    git -C "$repo" config --local --null --list
+    reflog=$(git -C "$repo" rev-parse --git-path logs/HEAD)
+    [[ "$reflog" == /* ]] || reflog="$repo/$reflog"
+    if [[ -f "$reflog" ]]; then git hash-object --no-filters -- "$reflog"; else echo 'no HEAD reflog'; fi
+  fi
   git hash-object --no-filters -- "$index"
   if [[ -f "$repo/.git" ]]; then git hash-object --no-filters -- "$repo/.git"; fi
 }
 identity "$root" > "$scratch/parent.identity"
 identity "$dest" > "$scratch/dest.identity"
 identity "$dest" attachment > "$scratch/dest.attachment-before"
+git -C "$dest" config --local --null --list > "$scratch/config.before"
+head_log=$(git -C "$dest" rev-parse --git-path logs/HEAD)
+[[ "$head_log" == /* ]] || head_log="$dest/$head_log"
+if [[ -f "$head_log" ]]; then cp "$head_log" "$scratch/reflog.before"; else : > "$scratch/reflog.before"; fi
 current_path='archive/export'
 git -C "$src" -c tar.umask=0022 archive --format=tar "$source_sha" > "$scratch/template.tar"
 tar -xpf "$scratch/template.tar" -C "$scratch/payload"
@@ -318,7 +354,7 @@ if [[ -z "$branch" ]]; then
   echo 'PLANNED BRANCH ACTION: ATTACH TO master'
   echo 'Destination is detached at the approved master pin; scaffold would attach it to master before installation.'
 else
-  echo 'DESTINATION STATE: master'
+  echo 'DESTINATION STATE: MASTER AT APPROVED PIN'
   echo 'PLANNED BRANCH ACTION: NONE'
 fi
 printf 'DESTINATION HEAD: %s\nMASTER HEAD: %s\nORIGIN/MASTER HEAD: %s\nPLACEHOLDER SHA: %s\n' "$dest_sha" "$master_sha" "$tracking_sha" "$approved"
@@ -331,6 +367,7 @@ if [[ "$dry" == true ]]; then
   exit 0
 fi
 if [[ -z "$branch" ]]; then
+  retain_evidence=1
   current_path='master attachment'
   if ! git -C "$dest" symbolic-ref -m "scaffold: attach approved destination to master" HEAD refs/heads/master; then
     git -C "$dest" status --short --branch >&2 || true
@@ -343,10 +380,59 @@ current_path='post-attachment validation (no scaffold files written)'
 state_check
 [[ "$branch" == master ]] || fail 'Destination changed after attachment; no scaffold files were written.'
 placeholder_check
-identity "$dest" attachment > "$scratch/dest.attachment-after"
-cmp -s "$scratch/dest.attachment-before" "$scratch/dest.attachment-after" || fail 'Destination identity changed during attachment; no scaffold files were written.'
+if [[ -z "$initial_branch" ]]; then
+  identity "$dest" attachment > "$scratch/dest.attachment-after"
+  cmp -s "$scratch/dest.attachment-before" "$scratch/dest.attachment-after" || fail 'Destination identity changed during attachment; no scaffold files were written.'
+fi
 identity "$root" > "$scratch/parent.recheck"
 cmp -s "$scratch/parent.identity" "$scratch/parent.recheck" || fail 'Parent Git identity changed during attachment.'
+if [[ -z "$initial_branch" ]]; then
+  git -C "$dest" config --local --null --list > "$scratch/config.after"
+  if [[ -f "$head_log" ]]; then cp "$head_log" "$scratch/reflog.after"; else : > "$scratch/reflog.after"; fi
+  if ! python3 -I -B - "$scratch" "$approved" <<'PYIDENTITY'
+import collections
+from pathlib import Path
+import sys
+root, commit = Path(sys.argv[1]), sys.argv[2].encode()
+def config(name):
+    entries = collections.defaultdict(list)
+    for record in (root/name).read_bytes().split(b'\0'):
+        if not record: continue
+        key, separator, value = record.partition(b'\n')
+        entries[key].append((bool(separator), value))
+    return dict(entries)
+def refuse(category):
+    # Values are deliberately absent from the user-facing diagnostic.
+    message = 'unexpected destination ' + category + ' during attachment. No scaffold files were written.'
+    (root/'identity-summary.txt').write_text(message + '\n')
+    print('Scaffold refused: ' + message, file=sys.stderr)
+    sys.exit(2)
+a, b = config('config.before'), config('config.after')
+key = b'branch.master.vscode-merge-base'
+if key not in a and b.get(key) == [(True, b'origin/master')]:
+    b = dict(b); del b[key]
+for changed in sorted(set(a) | set(b)):
+    if a.get(changed) != b.get(changed):
+        safe = ''.join(chr(c) if 32 <= c < 127 else '?' for c in changed)
+        refuse('config change: ' + safe)
+before, after = (root/'reflog.before').read_bytes(), (root/'reflog.after').read_bytes()
+if not after.startswith(before): refuse('HEAD reflog history change')
+extra = after[len(before):].splitlines()
+if len(extra) != 1: refuse('HEAD reflog entry count change')
+fields, sep, message = extra[0].partition(b'\t')
+ids = fields.split(b' ', 2)
+if len(ids) != 3 or ids[:2] != [commit, commit] or message != b'scaffold: attach approved destination to master':
+    refuse('HEAD reflog attachment entry change')
+(root/'identity-summary.txt').write_text('Attachment commit/refs/index/pointer and config/reflog checks passed.\n')
+PYIDENTITY
+  then
+    fail 'Attachment identity validation failed; see retained diagnostic evidence.'
+  fi
+else
+  identity "$dest" > "$scratch/dest.no-attachment"
+  cmp -s "$scratch/dest.identity" "$scratch/dest.no-attachment" || fail 'Destination Git identity changed before installation.'
+fi
+retain_evidence=0
 # Preserve the original evidence; installation has its own verified baseline.
 identity "$dest" > "$scratch/dest.installation"
 cp "$dest/README.md" "$scratch/original/README.md"

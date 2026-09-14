@@ -213,6 +213,96 @@ class Scaffold(unittest.TestCase):
         self.git(self.dest, 'worktree', 'add', str(self.base/'linked'), 'master')
         for dry in ['true', 'false']: self.refuse('another worktree', dry=dry)
 
+    def attachment_config_env(self, command):
+        return self.wrapper('git', '/usr/bin/git "$@" || exit $?\nfor arg in "$@"; do if [[ "$arg" == "scaffold: attach approved destination to master" ]]; then '+command+'; fi; done\n')
+
+    def test_vscode_attachment_addition(self):
+        self.git(self.dest, 'checkout', '--detach')
+        before=self.identity(self.dest)
+        env=self.attachment_config_env('/usr/bin/git -C "'+str(self.dest)+'" config --add --local branch.master.vscode-merge-base origin/master')
+        result=self.invoke(dry='false',env=env)
+        self.assertEqual(0,result.returncode,result.stdout)
+        self.assertTrue((self.dest/'GoalStats.User.sln').exists())
+        after=self.identity(self.dest)
+        for index in [0,2,3,5,6]:self.assertEqual(before[index],after[index])
+        self.assertEqual('master',after[1])
+
+    def test_existing_vscode_metadata(self):
+        self.git(self.dest, 'config', '--local', 'branch.master.vscode-merge-base', 'origin/master')
+        self.git(self.dest, 'checkout', '--detach')
+        before=self.git(self.dest, 'config', '--local', '--list')
+        result=self.invoke(dry='false')
+        self.assertEqual(0,result.returncode,result.stdout)
+        self.assertEqual(before,self.git(self.dest, 'config', '--local', '--list'))
+
+    def test_unexpected_attachment_config_matrix(self):
+        cases = [
+            (None, 'branch.master.vscode-merge-base', 'foo'),
+            ('origin/master', 'branch.master.vscode-merge-base', 'origin/master'),
+            (None, 'branch.master.vscode-something-else', 'secret-value'),
+            (None, 'remote.origin.fetch', 'unexpected'),
+            (None, 'branch.master.remote', 'unexpected'),
+            (None, 'branch.master.merge', 'unexpected'),
+            (None, 'custom.setting', 'secret-value'),
+        ]
+        config=Path(self.git(self.dest,'rev-parse','--absolute-git-dir'))/'config'
+        original=config.read_bytes()
+        for initial,key,value in cases:
+            with self.subTest(key=key,value=value):
+                config.write_bytes(original)
+                self.git(self.dest,'checkout','--detach',self.placeholder)
+                if initial:self.git(self.dest,'config','--local', 'branch.master.vscode-merge-base',initial)
+                env=self.attachment_config_env('/usr/bin/git -C "'+str(self.dest)+'" config --add --local '+key+' '+value)
+                p=self.refuse('unexpected destination config change',dry='false',env=env)
+                self.assertNotIn('secret-value',p.stdout)
+                self.assertIn('diagnostic evidence retained:',p.stdout)
+                evidence=Path(p.stdout.split('Attachment diagnostic evidence retained: ')[1].splitlines()[0])
+                self.assertTrue((evidence/'identity-summary.txt').exists())
+                shutil.rmtree(evidence)
+        config.write_bytes(original)
+
+    def test_attachment_origin_change(self):
+        self.git(self.dest,'checkout','--detach')
+        env=self.attachment_config_env('/usr/bin/git -C "'+str(self.dest)+'" config --local remote.origin.url /wrong')
+        self.refuse('noncanonical origin',dry='false',env=env)
+
+    def test_existing_other_metadata_value_cannot_be_replaced(self):
+        self.git(self.dest,'checkout','--detach')
+        self.git(self.dest,'config','--local','branch.master.vscode-merge-base','foo')
+        env=self.attachment_config_env('/usr/bin/git -C "'+str(self.dest)+'" config --local branch.master.vscode-merge-base origin/master')
+        self.refuse('unexpected destination config change',dry='false',env=env)
+
+    def test_existing_vscode_removal_or_change_refused(self):
+        for action in ['--unset', '--replace-all']:
+            self.git(self.dest,'checkout','--detach',self.placeholder)
+            self.git(self.dest,'config','--local','branch.master.vscode-merge-base','origin/master')
+            suffix=' foo' if action=='--replace-all' else ''
+            env=self.attachment_config_env('/usr/bin/git -C "'+str(self.dest)+'" config --local '+action+' branch.master.vscode-merge-base'+suffix)
+            self.refuse('unexpected destination config change',dry='false',env=env)
+
+    def test_unexpected_attachment_reflog(self):
+        self.git(self.dest,'checkout','--detach')
+        env=self.attachment_config_env('/usr/bin/git -C "'+str(self.dest)+'" symbolic-ref -m "unrelated entry" HEAD refs/heads/master')
+        self.refuse('HEAD reflog entry count',dry='false',env=env)
+
+    def test_attachment_index_bytes_change(self):
+        self.git(self.dest,'checkout','--detach')
+        env=self.attachment_config_env('/usr/bin/git -C "'+str(self.dest)+'" update-index --index-version=4')
+        before=self.tree(self.dest)
+        p=self.invoke(dry='false',env=env)
+        self.assertNotEqual(0,p.returncode,p.stdout)
+        self.assertIn('Destination identity changed',p.stdout)
+        self.assertEqual(before,self.tree(self.dest))
+
+    def test_master_preview_with_existing_metadata(self):
+        self.git(self.dest,'config','--local','branch.master.vscode-merge-base','origin/master')
+        before=self.repository_snapshot()
+        p=self.invoke(dry='true')
+        self.assertEqual(0,p.returncode,p.stdout)
+        self.assertIn('DESTINATION STATE: MASTER AT APPROVED PIN',p.stdout)
+        self.assertEqual(before,self.repository_snapshot())
+        p=self.invoke(dry='false');self.assertEqual(0,p.returncode,p.stdout)
+
     def test_attachment_failure(self):
         self.git(self.dest, 'checkout', '--detach')
         env=self.wrapper('git', 'for arg in "$@"; do if [[ "$arg" == "scaffold: attach approved destination to master" ]]; then exit 17; fi; done\nexec /usr/bin/git "$@"\n')

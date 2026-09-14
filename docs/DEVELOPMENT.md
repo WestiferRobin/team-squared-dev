@@ -373,12 +373,17 @@ repository files, HEAD, refs, reflogs or index. Actual scaffold prepares and val
 all transformed output first, then attaches only the approved destination to existing
 master using symbolic-ref. HEAD commit, refs, config/origin, index bytes, placeholder
 bytes and parent gitlink must remain unchanged. Only symbolic HEAD and its normal
-HEAD reflog entry may change. Installation uses a verified post-attachment identity.
+HEAD reflog entry may change. Attachment also permits exactly one local config
+addition: absent `branch.master.vscode-merge-base` becomes a single `origin/master`
+value. Existing values and every other config entry must remain unchanged.
+Installation uses a verified post-attachment identity, including HEAD reflog state.
 
 Scaffold remains offline: local origin/master is a consistency check, not a claim
 about the live remote. Missing/mismatched refs, unexpected branches, dirty files,
 operations or another worktree owning master refuse without automatic repair.
 Attachment and post-attachment failures write no scaffold payload and do not reset
-or detach again; inspect the reported state. The external scaffold lock covers
+or detach again; inspect the reported state and private temporary diagnostic path.
+Failure evidence is retained outside repositories; successful runs remove it.
+Treat raw config evidence as private. Errors identify keys/categories, not values. The external scaffold lock covers
 preparation, attachment and installation, but cannot prevent manual Git changes.
 All existing parent cleanliness, placeholder and repeat-run guards remain active.
