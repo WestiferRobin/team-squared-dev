@@ -432,8 +432,27 @@ Merge/shallow/replaced/grafted histories refuse. Parent source must match the ap
 commit and its index must match the committed tree, with no staged changes. Historical
 index bytes may differ; the current execution baseline is preserved instead. The
 original HEAD reflog prefix must remain intact, and appended transitions must match
-the approved commit chain. Existing unrelated refs/config remain strict; only the
-existing narrow new Codex capture-ref exception is retained.
+the approved commit chain. Existing unrelated refs/config remain strict. Historical
+additions, removals and retargeting are allowed only for direct Codex turn-diff tree snapshot refs matching
+these complete forms (lowercase hexadecimal hashes, decimal timestamps, canonical
+lowercase UUIDs):
+
+- `refs/codex/turn-diffs/checkpoints/<64-hex>/<64-hex>/<milliseconds>/<UUID>`
+- `refs/codex/turn-diffs/captures/<milliseconds>/<UUID>/base`
+- `refs/codex/turn-diffs/captures/<milliseconds>/<UUID>/head`
+
+Every present snapshot must target a readable local tree directly: commits, blobs,
+annotated tags, symbolic/dangling refs and malformed paths refuse. Snapshot trees
+may represent uncommitted work and need not be reachable from committed history.
+Removed historical snapshot objects need not survive garbage collection; recovery
+never uses these snapshots to define the operation or reconstruct payload. Original
+operation/template/transformer objects remain independently mandatory.
+
+This permits the editor's historical snapshot lifecycle without rewriting retained
+evidence. The complete current ref inventory, including snapshot refs and symbolic
+targets, stays frozen throughout both verification passes. Concurrent ref changes
+still refuse. Other Codex namespaces receive no exception, and unknown ref changes
+remain errors. Publication refs keep their existing certified transition rules.
 
 Recovery prints both parent SHAs and the compatibility checks. It never rewrites
 historical snapshots to claim the operation happened under the newer tooling. The

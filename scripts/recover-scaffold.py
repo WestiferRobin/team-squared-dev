@@ -62,6 +62,81 @@ def refs(repo):
     return dict(line.split(' ', 1)[::-1] for line in text(repo, 'show-ref').splitlines())
 
 
+PUBLICATION_REFS = frozenset({'refs/heads/master', 'refs/remotes/origin/master',
+                              'refs/remotes/origin/HEAD'})
+UUID_PATTERN = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+SNAPSHOT_PATTERN = re.compile(
+    r'refs/codex/turn-diffs/(?:checkpoints/[0-9a-f]{64}/[0-9a-f]{64}/[0-9]+/'
+    + UUID_PATTERN + r'|captures/[0-9]+/' + UUID_PATTERN + r'/(?:base|head))')
+
+
+def ref_class(ref):
+    if ref in PUBLICATION_REFS:
+        return 'publication'
+    if SNAPSHOT_PATTERN.fullmatch(ref):
+        return 'snapshot'
+    require(not ref.startswith(('refs/codex/turn-diffs/checkpoints/',
+                                'refs/codex/turn-diffs/captures/')),
+            'malformed Codex turn-diff snapshot ref: '+ref)
+    return 'strict'
+
+
+def current_ref_inventory(repo):
+    # Include symbolic targets in the execution baseline; never peel annotated tags.
+    inventory = {}
+    for line in text(repo, 'for-each-ref', '--format=%(refname) %(objectname) %(symref)').splitlines():
+        fields = line.split()
+        inventory[fields[0]] = (fields[1], fields[2] if len(fields) > 2 else '')
+    # Git's ref enumeration silently omits dangling symbolic refs. Account for
+    # loose refs too, so a malformed/dangling snapshot cannot disappear from view.
+    common = Path(text(repo, 'rev-parse', '--git-common-dir'))
+    if not common.is_absolute(): common = repo/common
+    for path in (common/'refs').rglob('*'):
+        require(not path.is_symlink(), 'Unsupported symlink in parent refs')
+        if not path.is_file(): continue
+        ref = path.relative_to(common).as_posix()
+        if ref not in inventory:
+            require(ref_class(ref) != 'snapshot',
+                    'unreadable or symbolic Codex turn-diff snapshot ref: '+ref)
+            require(False, 'unreadable parent ref: '+ref)
+    # show-ref also refuses dangling object references that for-each-ref can omit.
+    require(refs(repo) == {ref: row[0] for ref, row in inventory.items()},
+            'Incomplete current parent ref inventory')
+    return inventory
+
+
+def publication_transition(ref, saved, current, original, tooling):
+    require(saved == original, 'Historical publication ref differs from original operation')
+    require(current == tooling, 'Parent publication ref changed: '+ref)
+
+
+def snapshot_transition(ref, current):
+    # Removed historical snapshots need no object lookup: they are never consumed.
+    if current is None:
+        return
+    sha, symbolic = current
+    require(not symbolic, 'symbolic Codex turn-diff snapshot ref: '+ref)
+    require(text(ROOT, 'cat-file', '-t', sha) == 'tree',
+            'Codex turn-diff snapshot ref does not target a tree: '+ref)
+
+
+def strict_ref_transition(ref, saved, current):
+    require(saved is not None and current == saved, 'unapproved parent ref changed: '+ref)
+
+
+def validate_ref_transitions(saved, current, original, tooling):
+    for ref in sorted(set(saved) | set(current)):
+        kind = ref_class(ref)
+        row = current.get(ref)
+        sha = row[0] if row is not None else None
+        if kind == 'publication':
+            publication_transition(ref, saved.get(ref), sha, original, tooling)
+        elif kind == 'snapshot':
+            snapshot_transition(ref, row)
+        else:
+            strict_ref_transition(ref, saved.get(ref), sha)
+
+
 def identity(repo):
     gd = text(repo, 'rev-parse', '--absolute-git-dir')
     result = f'repo {repo}\ngitdir {gd}\n'.encode() + git(repo, 'rev-parse', 'HEAD')
@@ -253,16 +328,7 @@ def audit(service, domain, marker, recovery, parent_head, operation_parent):
     require(current_identity.split(b'\n', 2)[:2] == read(recovery/'parent.identity').split(b'\n', 2)[:2], 'Parent Git directory changed')
     require(len(saved_tail) == 2, 'Malformed historical parent index/reflog evidence')
     reflog_transition(saved_tail[0], operation_head, chain)
-    current_refs = refs(ROOT)
-    publication_refs = {'refs/heads/master', 'refs/remotes/origin/master', 'refs/remotes/origin/HEAD'}
-    for ref,sha in saved_refs.items():
-        expected = parent_head if ref in publication_refs else sha
-        if ref in publication_refs:
-            require(sha == operation_head, 'Historical publication ref differs from original operation')
-        require(current_refs.get(ref)==expected, 'Parent ref changed: '+ref)
-    for ref in set(current_refs)-set(saved_refs):
-        require(re.fullmatch(r'refs/codex/turn-diffs/captures/[0-9]+/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/base',ref) is not None, 'Unexpected parent ref: '+ref)
-        require(text(ROOT,'cat-file','-t',current_refs[ref])=='commit', 'Tooling ref is not a commit')
+    validate_ref_transitions(saved_refs, current_ref_inventory(ROOT), operation_head, parent_head)
     dest = safe_path(ROOT/destination); src = safe_path(ROOT/source)
     for repo,path,sha in [(dest,destination,approved),(src,source,links[source])]:
         operations(repo)
@@ -314,6 +380,7 @@ def audit(service, domain, marker, recovery, parent_head, operation_parent):
             '\nCURRENT RECOVERY TOOLING PARENT SHA: '+parent_head+
             '\nAPPROVED TOOLING SHA MATCH: YES\nORIGINAL IS ANCESTOR: YES'+
             '\nLINEAR HISTORY: YES\nINTERVENING COMMIT SCOPE: PASS'+
+            '\nRECOVERY HISTORICAL REF COMPATIBILITY: PASS'+
             '\nCRITICAL INPUT COMPARISON: PASS\nORIGINAL TRANSFORMER BLOB: '+transformer_blob+
             '\nCURRENT TRANSFORMER MATCH: YES\n'+result)
 
@@ -342,14 +409,17 @@ def main():
         head=text(ROOT,'rev-parse','HEAD')
         require(head == tooling, 'Approved tooling HEAD changed')
         execution_baseline = identity(ROOT)
+        execution_refs = current_ref_inventory(ROOT)
         print(audit(service,domain,marker,recovery,head,original))
         require(identity(ROOT) == execution_baseline, 'Parent execution baseline changed')
+        require(current_ref_inventory(ROOT) == execution_refs, 'Parent ref inventory changed during recovery')
         if dry=='true':
             print('Recovery verified. DRY_RUN: marker, evidence and destination unchanged.')
             return
         # Repeat all checks before the sole mutation; no copying or repair is performed.
         audit(service,domain,marker,recovery,head,original)
         require(identity(ROOT) == execution_baseline, 'Parent execution baseline changed')
+        require(current_ref_inventory(ROOT) == execution_refs, 'Parent ref inventory changed during recovery')
         archive=recovery/'finalized-marker'
         require(not archive.exists(), 'Finalized marker archive already exists')
         os.rename(marker,archive)  # Atomic when supported; otherwise fail without deleting marker.

@@ -459,10 +459,10 @@ class Scaffold(unittest.TestCase):
 
     def test_recovery_parent_tooling_ref(self):
         marker,recovery=self.incomplete_fixture()
-        head=self.git(self.parent,'rev-parse','HEAD')
-        self.git(self.parent,'update-ref','refs/codex/turn-diffs/captures/123/12345678-1234-1234-1234-123456789abc/base',head)
+        snapshot=self.git(self.parent,'rev-parse','HEAD^{tree}')
+        self.git(self.parent,'update-ref','refs/codex/turn-diffs/captures/123/12345678-1234-1234-1234-123456789abc/base',snapshot)
         p=self.recover();self.assertEqual(0,p.returncode,p.stdout)
-        self.git(self.parent,'update-ref','refs/heads/unexpected',head)
+        self.git(self.parent,'update-ref','refs/heads/unexpected',self.operation_parent)
         self.assertNotEqual(0,self.recover('false').returncode);self.assertTrue(marker.exists())
 
     def test_recovery_parent_advance_refused(self):
@@ -473,6 +473,177 @@ class Scaffold(unittest.TestCase):
         self.assertNotEqual(0,self.recover().returncode)
         p=self.recover(OPERATION_PARENT=old);self.assertNotEqual(0,p.returncode,p.stdout)
         self.assertTrue(marker.exists())
+
+    def snapshot_refs(self):
+        uuid='b891bd47-867a-41ca-9da0-a3e4d84f721f'
+        checkpoint=('refs/codex/turn-diffs/checkpoints/'
+                    'd45f833b5ec872d9d9a35da613f507eb71d3571fa984d4661d2af25623b96a97/'
+                    '3d52fb00549af8496faa8c393a08c98c6f40f56f9e58269ef58fc229c9313145/'
+                    '1789418087999/'+uuid)
+        capture='refs/codex/turn-diffs/captures/1789418087999/'+uuid
+        return [checkpoint,capture+'/base',capture+'/head']
+
+    def snapshot_tree(self, value='uncommitted snapshot'):
+        path=self.base/'snapshot-content';path.write_text(value)
+        blob=self.git(self.parent,'hash-object','-w',str(path))
+        result=subprocess.run(['git','mktree'],cwd=self.parent,env=self.env,
+                              input='100644 blob '+blob+'\tsnapshot\n',text=True,capture_output=True)
+        self.assertEqual(0,result.returncode,result.stderr)
+        tree=result.stdout.strip()
+        self.assertNotIn(tree,self.git(self.parent,'rev-list','--objects','HEAD'))
+        return tree
+
+    def test_recovery_snapshot_real_lifecycle(self):
+        old,base,head=self.snapshot_refs();tree=self.snapshot_tree()
+        self.git(self.parent,'update-ref',old,tree)
+        marker,evidence=self.incomplete_fixture();saved=self.tree(evidence);payload=self.tree(self.dest)
+        self.git(self.parent,'update-ref','-d',old)
+        new=old.replace('1789418087999','1789428328739')
+        for ref in [new,base]:self.git(self.parent,'update-ref',ref,self.snapshot_tree(ref))
+        (self.parent/'README.md').write_text('approved recovery publication')
+        self.publish_fixture(['README.md'])
+        before=self.repository_snapshot();p=self.recover()
+        self.assertEqual(0,p.returncode,p.stdout);self.assertEqual(before,self.repository_snapshot())
+        self.assertEqual(saved,self.tree(evidence))
+        self.assertIn('RECOVERY HISTORICAL REF COMPATIBILITY: PASS',p.stdout)
+        p=self.recover('false');self.assertEqual(0,p.returncode,p.stdout)
+        self.assertFalse(marker.exists());self.assertEqual(payload,self.tree(self.dest))
+        for name,value in saved.items():self.assertEqual(value,self.tree(evidence)[name])
+
+    def test_recovery_snapshot_additions(self):
+        marker,evidence=self.incomplete_fixture();tree=self.snapshot_tree()
+        for ref in self.snapshot_refs():
+            self.git(self.parent,'update-ref',ref,tree)
+            before=self.repository_snapshot();p=self.recover()
+            self.assertEqual(0,p.returncode,p.stdout);self.assertEqual(before,self.repository_snapshot())
+        self.assertTrue(marker.exists())
+
+    def test_recovery_snapshot_removals_and_retargets(self):
+        refs=self.snapshot_refs();old=self.snapshot_tree('old snapshot')
+        for ref in refs:self.git(self.parent,'update-ref',ref,old)
+        marker,evidence=self.incomplete_fixture();saved=self.tree(evidence)
+        for ref in refs:
+            self.git(self.parent,'update-ref',ref,self.snapshot_tree(ref))
+            p=self.recover();self.assertEqual(0,p.returncode,p.stdout)
+            self.git(self.parent,'update-ref','-d',ref)
+            p=self.recover();self.assertEqual(0,p.returncode,p.stdout)
+        # Simulate GC of this unreferenced, non-operation tree in the disposable fixture.
+        (self.parent/'.git/objects'/old[:2]/old[2:]).unlink()
+        p=self.recover('false');self.assertEqual(0,p.returncode,p.stdout)
+        self.assertFalse(marker.exists())
+        for name,value in saved.items():self.assertEqual(value,self.tree(evidence)[name])
+
+    def test_recovery_snapshot_wrong_objects(self):
+        marker,evidence=self.incomplete_fixture();tree=self.snapshot_tree()
+        self.git(self.parent,'tag','-a','snapshot-test','-m','annotated tag')
+        tag=self.git(self.parent,'rev-parse','refs/tags/snapshot-test')
+        self.git(self.parent,'tag','-d','snapshot-test')
+        values=[self.operation_parent,self.git(self.parent,'rev-parse','HEAD:Makefile'),tag]
+        for ref in self.snapshot_refs():
+            for sha in values:
+                self.git(self.parent,'update-ref',ref,sha)
+                p=self.recovery_refused_unchanged(marker,evidence)
+                self.assertIn('does not target a tree',p.stdout)
+            self.git(self.parent,'update-ref','-d',ref)
+            path=self.parent/'.git'/ref;path.parent.mkdir(parents=True,exist_ok=True)
+            path.write_text('0'*40+'\n')
+            self.recovery_refused_unchanged(marker,evidence);path.unlink()
+
+    def test_recovery_snapshot_malformed_and_unknown(self):
+        marker,evidence=self.incomplete_fixture();checkpoint,base,head=self.snapshot_refs()
+        paths=[checkpoint.replace('d45f','D45F'),checkpoint.replace('d45f','d45'),
+               checkpoint.replace('3d52','3D52'),checkpoint.replace('3d52','3d5'),
+               checkpoint.replace('1789418087999','not-decimal'),checkpoint.rsplit('/',1)[0],
+               checkpoint.rsplit('/',1)[0]+'/not-a-uuid',checkpoint+'/extra',
+               checkpoint.replace('/checkpoints/','/checkpoint/'),
+               checkpoint.replace('/1789418087999','/nested/1789418087999'),
+               base.rsplit('/',1)[0]+'/foo',base+'/extra',
+               'refs/codex/turn-diffs/captures/123/base',
+               base.replace('1789418087999','bad'),base.replace('b891bd47','B891BD47'),
+               'refs/codex/foo','refs/codex/another-tool/value',
+               'refs/codex/turn-diffs/random/value','refs/custom/trust']
+        tree=self.snapshot_tree()
+        for ref in paths:
+            with self.subTest(ref=ref):
+                self.git(self.parent,'update-ref',ref,tree)
+                p=self.recovery_refused_unchanged(marker,evidence)
+                self.assertTrue('malformed Codex' in p.stdout or 'unapproved parent ref changed' in p.stdout,p.stdout)
+                self.git(self.parent,'update-ref','-d',ref)
+
+    def test_recovery_snapshot_symbolic(self):
+        tree=self.snapshot_tree();target='refs/custom/snapshot-target'
+        self.git(self.parent,'update-ref',target,tree)
+        marker,evidence=self.incomplete_fixture()
+        for ref in self.snapshot_refs():
+            self.git(self.parent,'symbolic-ref',ref,target)
+            p=self.recovery_refused_unchanged(marker,evidence)
+            self.assertIn('symbolic Codex',p.stdout)
+            self.git(self.parent,'symbolic-ref','--delete',ref)
+            self.git(self.parent,'symbolic-ref',ref,'refs/missing/target')
+            p=self.recovery_refused_unchanged(marker,evidence)
+            self.assertIn('symbolic Codex',p.stdout)
+            self.git(self.parent,'symbolic-ref','--delete',ref)
+
+    def test_recovery_snapshot_strict_other_transitions(self):
+        others=['refs/heads/other','refs/tags/retained','refs/custom/trust','refs/codex/other']
+        for ref in others:self.git(self.parent,'update-ref',ref,self.git(self.parent,'rev-parse','HEAD'))
+        marker,evidence=self.incomplete_fixture()
+        for ref in self.snapshot_refs():self.git(self.parent,'update-ref',ref,self.snapshot_tree())
+        changed=self.git(self.parent,'commit-tree','HEAD^{tree}','-m','other target')
+        for ref in others:
+            self.git(self.parent,'update-ref',ref,changed);self.recovery_refused_unchanged(marker,evidence)
+            self.git(self.parent,'update-ref','-d',ref);self.recovery_refused_unchanged(marker,evidence)
+            self.git(self.parent,'update-ref',ref,self.operation_parent)
+        for ref in ['refs/heads/new','refs/tags/new']:
+            self.git(self.parent,'update-ref',ref,self.operation_parent);self.recovery_refused_unchanged(marker,evidence)
+            self.git(self.parent,'update-ref','-d',ref)
+        self.assertEqual(0,self.recover().returncode)
+
+    def test_recovery_snapshot_critical_combinations(self):
+        self.git(self.parent,'symbolic-ref','refs/remotes/origin/HEAD','refs/remotes/origin/master')
+        marker,evidence=self.incomplete_fixture()
+        self.git(self.parent,'update-ref',self.snapshot_refs()[0],self.snapshot_tree())
+        for path in ['config/scaffolds.tsv','scripts/scaffold-transform.py']:
+            file=self.parent/path;data=file.read_bytes();file.write_bytes(data+b'\n# changed\n')
+            self.recovery_refused_unchanged(marker,evidence);file.write_bytes(data)
+        for path,sha in [(SOURCE_PATH,self.placeholder),(DEST_PATH,self.source_pin)]:
+            self.git(self.parent,'update-index','--cacheinfo','160000',sha,path)
+            self.recovery_refused_unchanged(marker,evidence);self.git(self.parent,'reset','HEAD','--',path)
+        file=self.parent/'Makefile';data=file.read_bytes();file.write_bytes(data+b'\n# staged\n')
+        self.git(self.parent,'add','Makefile');self.recovery_refused_unchanged(marker,evidence)
+        self.git(self.parent,'reset','HEAD','--','Makefile');file.write_bytes(data)
+        other=self.git(self.parent,'commit-tree','HEAD^{tree}','-m','unauthorized replacement')
+        self.git(self.parent,'update-ref','--no-deref','refs/remotes/origin/HEAD',other)
+        self.recovery_refused_unchanged(marker,evidence)
+        self.git(self.parent,'symbolic-ref','refs/remotes/origin/HEAD','refs/remotes/origin/master')
+        self.git(self.parent,'update-ref','refs/remotes/origin/master',other)
+        self.recovery_refused_unchanged(marker,evidence)
+        self.git(self.parent,'update-ref','refs/remotes/origin/master',self.operation_parent)
+        self.git(self.parent,'update-ref','refs/heads/master',other)
+        self.recovery_refused_unchanged(marker,evidence)
+        self.tooling_sha=other;self.git(self.parent,'update-ref','refs/remotes/origin/master',other)
+        self.recovery_refused_unchanged(marker,evidence)
+
+    def test_recovery_snapshot_execution_mutation(self):
+        for dry,index in [('true',0),('false',0),('true',1),('false',2),('false',3)]:
+            fixture=Scaffold();fixture.setUp()
+            try:
+                ref=fixture.snapshot_refs()[index % 3];tree=fixture.snapshot_tree()
+                mutation='update-ref '+ref+' '+tree
+                if index==3:
+                    # Same resolved SHA: only symbolic metadata changes during execution.
+                    fixture.git(fixture.parent,'update-ref','refs/custom/snapshot-target',tree)
+                    fixture.git(fixture.parent,'update-ref',ref,tree)
+                    mutation='symbolic-ref '+ref+' refs/custom/snapshot-target'
+                marker,evidence=fixture.incomplete_fixture();saved=fixture.tree(evidence);payload=fixture.tree(fixture.dest)
+                # Trigger after the baseline, when reconstruction reads source blobs.
+                body='/usr/bin/git "$@" || exit $?\nif [[ "$*" == *"cat-file blob"* && "$*" == *"'+str(fixture.src)+'"* ]]; then /usr/bin/git -C "'+str(fixture.parent)+'" '+mutation+'; fi\n'
+                env=fixture.wrapper('git',body)
+                p=fixture.cmd(fixture.parent,'make','recover-scaffold','SERVICE='+SERVICE,'DOMAIN=User',
+                    'OPERATION_PARENT='+fixture.operation_parent,'RECOVERY_TOOLING_SHA='+fixture.tooling_sha,'DRY_RUN='+dry,env=env,ok=False)
+                self.assertNotEqual(0,p.returncode,p.stdout);self.assertIn('changed',p.stdout)
+                self.assertTrue(marker.exists());self.assertEqual(saved,fixture.tree(evidence));self.assertEqual(payload,fixture.tree(fixture.dest))
+            finally:fixture.doCleanups()
 
     def publish_fixture(self, paths, message='approved recovery update'):
         self.git(self.parent,'add','--',*paths)

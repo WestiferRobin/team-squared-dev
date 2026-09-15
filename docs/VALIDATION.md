@@ -726,3 +726,97 @@ zero failures/skips. All parent shell scripts, Python files and embedded scaffol
 Python blocks passed syntax checks; `make help` and `git diff --check` passed.
 Every prepublication certification gate passed. The publication commit is the
 externally reviewed recovery-tooling anchor; real recovery remains a separate task.
+
+## Codex turn-diff snapshot ref compatibility implementation
+
+The real recovery preview refused because a retained Codex checkpoint ref had
+been removed. The installed editor implementation uses direct tree snapshots,
+creates replacement checkpoints, and releases previous checkpoint/capture refs.
+The prior capture test incorrectly used a commit target. This implementation
+changes only historical snapshot-ref compatibility; real recovery and publication
+remain separate tasks.
+
+Recovery classifies publication refs, exact checkpoint/capture snapshot refs, and
+strict other refs. Checkpoint names require two lowercase 64-hex components,
+decimal milliseconds and a canonical lowercase UUID. Capture names require decimal
+milliseconds, a canonical lowercase UUID and exactly `base` or `head`. Present
+snapshots must be direct readable local trees. No committed-history reachability
+is required, and removed historical snapshot objects need not remain available.
+These trees never supply operation identity, history trust or payload definitions.
+The original ref snapshot and all operation evidence remain immutable.
+
+Nine new regression cases exercise the exact real checkpoint shape and lifecycle,
+checkpoint/capture additions, removals and retargeting, unreachable tree targets,
+removed historical tree objects, wrong object types, malformed/unknown refs,
+symbolic refs (including dangling refs omitted by Git enumeration), strict other
+ref transitions, simultaneous critical-state changes, and execution-time mutations.
+The original capture regression now uses a tree while retaining a commit target
+for its unrelated-branch refusal. Full current ref inventory, including symbolic
+targets, stays frozen across recovery; a same-object symbolic conversion also
+refuses. Positive recovery fixtures preserve payload and historical evidence and
+archive only the marker. All recovery/scaffold executions use disposable fixtures.
+
+Implementation validation passed **109 scaffold / 25 transformer / 19 workspace
+tests**, zero failures/skips. The final complete scaffold suite ran in three
+isolated, disjoint batches (37 + 36 + 36), covering every current test exactly once;
+**23 recovery-specific cases are included**. Shell/Python/embedded-Python syntax,
+Make help and diff checks passed. The real 141-file payload was independently
+reconstructed and remained byte/mode exact, with 10 approved build-artifact files
+and no unexpected extras. All 489 real User/Git/marker/evidence baseline files
+remained hash/mode exact. All child pins and transformer remain unchanged. No real
+recovery/scaffold, staging, commit or push was performed. Ready for separate
+certification/publication; this is not authorization to recover real User.
+
+## Codex snapshot recovery certification
+
+Full certification passed **109 scaffold / 25 transformer / 19 workspace tests**,
+zero failures/skips; 23 recovery-specific cases are included in the scaffold suite.
+Syntax checks covered parent shell/Python files and embedded Python blocks. Make
+help and diff checks passed. Exact checkpoint/capture forms, direct tree targets,
+unreachable snapshot trees, historical addition/removal/retargeting and removed
+historical objects passed. Malformed/unknown refs, commit/blob/tag/missing targets,
+symbolic/dangling refs and combined critical-state violations refused.
+
+A fresh canonical clone was prepared at original operation parent
+`01b3245e937eb7644e844972f810310198d261ba` with a tree-backed checkpoint present.
+The original production scaffold installed all 141 transformed User files while
+six approved build artifacts were injected across the three project roots. The
+old verifier failed, retaining its original checkpoint in operation evidence.
+The parent then advanced through the previously published tooling commit and a
+candidate snapshot-policy commit. The original checkpoint was removed; a new
+checkpoint and capture `base`/`head` refs were created with direct tree targets.
+Explicit SHA-bound recovery preview and finalization passed. Historical evidence
+was byte-exact, preview wrote no repository files, and actual recovery only
+archived the marker. All 141 payload bytes/modes, six artifacts and child Git state
+were preserved; ordinary preview and actual scaffold repeats refused.
+
+The suite exercises checkpoint/capture mutations during execution, including
+same-SHA symbolic conversion. Six additional disposable cases changed master,
+origin/master or a custom ref during preview/actual reconstruction: every case
+refused while preserving marker/evidence/payload. Additional exact-payload cases
+refused missing/corrupt/mode-changed files, residual template tokens, altered
+placeholders, incomplete writes and manifest mismatch. Extra ignored files,
+symlinks/path escapes, hidden tracked edits and config changes also refused.
+Recovery preview/actual passed a Git network-command tripwire with zero attempts.
+
+The recovered disposable service passed `make unit`, `make integration` and
+`make test`: **260 unit / 293 integration / 553 total**, zero failures/skips.
+Build and API publish passed with **0 warnings / 0 errors**. EF confirmed
+`UserDbContext`, migration `20260908043250_InitialCreate`, and no pending model
+changes. Smoke and unchanged workflow certification passed LOCAL/DEV, Swagger,
+MetaController health/readiness, Item/Action CRUD/cache/cascade, PostgreSQL/Redis,
+two persistence cycles per mode, and normal/repeated-failure/SIGTERM cleanup.
+LOCAL/DEV sentinel data and unrelated container state survived the workflow runs.
+
+All certification-owned Docker resources were removed. Container, image and volume
+inventories and every non-bridge network ID matched the starting inventory.
+Docker's built-in bridge ID changed from `6e64154903c7` to `37448b924746`; no
+certification command targeted it. The workflow's own before/after resource checks
+passed. This observation is recorded rather than claiming identical bridge IDs.
+
+All prepublication gates passed. Real User was independently verified as 141 exact
+payload files with 10 approved artifact files and no unexpected extras. Its entire
+489-file User/Git/marker/evidence baseline remained hash/mode exact. All five pins,
+template and transformer are unchanged. Real recovery was not invoked. The new
+published commit from this certification must be supplied as `RECOVERY_TOOLING_SHA`
+for the separate real recovery task; the older tooling SHA is not a substitute.
