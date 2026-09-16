@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-SHA = "f4e2a94371dd894ffae70eee818f51f92179d183"
+SHA = "720260c7d8d5096bddbd0cc6d6f90f9f311d809a"
 
 
 def load(name):
@@ -44,9 +44,7 @@ PAYLOAD = canonical()
 def golden(payload, stem="user", domain="User"):
     result = {}
     for p, (m, d) in payload.items():
-        name = p.replace(
-            "src/goalstats_template/", "src/goalstats_" + stem.replace("-", "_") + "/"
-        )
+        name = p
         for old, new in [
             (b"goalstats_template", ("goalstats_" + stem.replace("-", "_")).encode()),
             (b"goalstats-template-py", ("goalstats-" + stem + "-py").encode()),
@@ -57,7 +55,7 @@ def golden(payload, stem="user", domain="User"):
             ),
         ]:
             d = d.replace(old, new)
-        if p == ".github/workflows/ci.yml":
+        if p in {".github/workflows/ci.yml", "docs/standard/template.md"}:
             d = d.replace(
                 b"goalstats-template-${{", ("goalstats-" + stem + "-${{").encode()
             )

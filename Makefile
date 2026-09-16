@@ -18,8 +18,8 @@ help:
 	  '  make help                    Show scope and commands' \
 	  '  make setup                   Prepare this checkout and missing env files; no Docker' \
 	  '  make sync                    Fast-forward parent master; synchronize approved pins; no Docker' \
-	  '  make scaffold-service SERVICE=<service> DOMAIN=<Domain>  Transform pinned Flask identity (Python 3.12)' \
-	  '    Safe pinned detached/master destination; actual attaches to master.' \
+	  '  make scaffold-service SERVICE=<service> DOMAIN=<Domain>  Transform pinned flat-src Flask identity (Python 3.12)' \
+	  '    Flat src; main:create_app(); no package/path renaming. Safe existing-master attachment.' \
 	  '' 'FULL STACK' \
 	  '  make build [ENV=local|dev]    Build every active image' \
 	  '  make run [ENV=local|dev]      Start one box; wait for required readiness' \

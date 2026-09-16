@@ -257,7 +257,7 @@ def preflight(service, domain, owned_marker=None):
             "Duplicate approval/domain",
         )
         domains.add(approved_domain.lower())
-        for value in (iv["package"], iv["slug"], iv["local"], iv["dev"]):
+        for value in (iv["logger"], iv["slug"], iv["local"], iv["dev"]):
             require(value not in identities, "Duplicate derived identity")
             identities.add(value)
         path = "backend/" + name
@@ -378,7 +378,10 @@ def report(state, dry):
         ("DOMAIN", i["domain"]),
         ("TEMPLATE_SHA", state["source_sha"]),
         ("DESTINATION_SHA", state["snapshots"][2]["head"]),
-        ("PACKAGE", "goalstats_template -> " + i["package"]),
+        ("SOURCE_LAYOUT", "flat-src"),
+        ("FACTORY_TARGET", i["factory"]),
+        ("PYTHON_PACKAGE_DIRECTORY_TRANSFORMATION", "NO"),
+        ("PATH_TRANSFORMATIONS", sum(a != b for a, b in state["mapping"].items())),
         ("RUNTIME_SLUG", i["slug"]),
         ("API_TITLE", i["api"]),
         ("DATABASE_LOCAL", i["local"]),

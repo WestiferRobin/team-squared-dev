@@ -11,7 +11,7 @@ class Transformer(unittest.TestCase):
         self.assertEqual(len(output), len(PAYLOAD))
         self.assertEqual(
             sum(a != b for a, b in mapping.items()),
-            sum(p.startswith("src/goalstats_template/") for p in PAYLOAD),
+            0,
         )
 
     def test_multiword(self):
@@ -83,13 +83,11 @@ class Transformer(unittest.TestCase):
     def test_bytes_modes_and_opaque(self):
         data = {
             **PAYLOAD,
-            "example.py": ("100755", b"\xef\xbb\xbfgoalstats_template\r\n"),
+            "example.py": ("100755", b"\xef\xbb\xbfItem Action\r\n"),
             "opaque.bin": ("100644", b"\x00\xffItem"),
         }
         out, _ = t.plan(data, "goalstats-user-service", "User")
-        self.assertEqual(
-            out["example.py"], ("100755", b"\xef\xbb\xbfgoalstats_user\r\n")
-        )
+        self.assertEqual(out["example.py"], ("100755", b"\xef\xbb\xbfItem Action\r\n"))
         self.assertEqual(out["opaque.bin"], data["opaque.bin"])
 
     def test_encoding_and_opaque_refusal(self):
@@ -146,5 +144,54 @@ class Transformer(unittest.TestCase):
     def test_no_extra_path_renames(self):
         _, mapping = t.plan(PAYLOAD, "goalstats-user-service", "User")
         for a, b in mapping.items():
-            if not a.startswith("src/goalstats_template/"):
-                self.assertEqual(a, b)
+            self.assertEqual(a, b)
+
+    def test_identity_locations_and_boundaries(self):
+        values = t.identity("goalstats-user-service", "User")
+        for token in t.TOKENS:
+            with self.subTest(token=token), self.assertRaises(ValueError):
+                t.transform(token, values, "unexpected.md")
+        for path, token in [
+            ("src/main.py", b"xgoalstats_template"),
+            ("src/main.py", b"goalstats_templateExtra"),
+            ("scripts/workflow.py", b"x-goalstats-template-py"),
+            ("scripts/workflow.py", b"goalstats-template-pyExtra"),
+            ("docker/compose.local.yml", b"goalstats_template_py_staging"),
+        ]:
+            with self.subTest(path=path, token=token), self.assertRaises(ValueError):
+                t.transform(token, values, path)
+        self.assertEqual(
+            t.transform(b"\xef\xbb\xbfgoalstats_template\r\n", values, "src/main.py"),
+            b"\xef\xbb\xbfgoalstats_user\r\n",
+        )
+
+    def test_flat_paths_and_imports_required(self):
+        for path in [
+            "src/goalstats_template/main.py",
+            "src/goalstats_user/main.py",
+            "src/__init__.py",
+        ]:
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                t.plan(
+                    {**PAYLOAD, path: ("100644", b"legacy")},
+                    "goalstats-user-service",
+                    "User",
+                )
+        for prefix in [b"goalstats_template", b"goalstats_user"]:
+            data = dict(PAYLOAD)
+            mode, original = data["src/main.py"]
+            data["src/main.py"] = (
+                mode,
+                original + b"\nfrom " + prefix + b".models import Item\n",
+            )
+            with self.assertRaises(ValueError):
+                t.plan(data, "goalstats-user-service", "User")
+        output, mapping = t.plan(PAYLOAD, "goalstats-user-service", "User")
+        self.assertEqual(set(output), set(PAYLOAD))
+        self.assertEqual(mapping, {p: p for p in PAYLOAD})
+        for path in PAYLOAD:
+            if path.startswith("src/") and path not in {
+                "src/main.py",
+                "src/settings/base.py",
+            }:
+                self.assertEqual(output[path], PAYLOAD[path])

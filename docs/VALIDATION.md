@@ -1,3 +1,22 @@
+# Flat-src scaffold contract
+
+Canonical template: `720260c7d8d5096bddbd0cc6d6f90f9f311d809a`.
+The active policy preserves every canonical path and all flat Python imports and
+`main:create_app()`. Only approved, path-scoped service/database/logger/runtime/API/CI
+identities transform. Item/Action, migration and requirements remain intact.
+Existing Git-only setup/sync and policy-v2 operation safety are preserved.
+
+Run parent suites with `PYTHONDONTWRITEBYTECODE=1 python3.12 -B -m unittest discover -s tests -p '*_test.py'`.
+Certification uses only disposable parent/User repositories; real User and TODO
+remain untouched. Full generated runtime evidence and published-clone results are
+reported with this release. Counts are observations, never hard-coded policy gates.
+
+# Historical package-layout certification — not the active contract
+
+All records below predate flat-src adoption. Package renaming, earlier canonical
+SHAs, source counts and previous publication claims are historical only. The active
+flat contract is documented in DEVELOPMENT.md and READINESS.md.
+
 # Python scaffold policy v2 — certification
 
 ## Prompt 2 independent certification (2026-09-16)

@@ -87,7 +87,7 @@ commit/publish there. App standalone manual runtime verification remains pending
 Wiki edits do not change the parent pin until an approved wiki commit is integrated.
 
 For the upcoming user-service bootstrap, the tracked template source is
-`backend/template-goalstats-service` at `f4e2a94371dd894ffae70eee818f51f92179d183`;
+`backend/template-goalstats-service` at `720260c7d8d5096bddbd0cc6d6f90f9f311d809a`;
 the destination remains `backend/goalstats-user-service` at
 `70c77c692993fc18e9f484bf22266a15288c0541`. Scaffold previews safe attachment and attaches the destination to master only on
 installation. No manual child branch command is needed. Pin adoption performs neither.
@@ -109,7 +109,7 @@ needed; setup/sync intentionally refuse an off-pin development checkout.
 ## Service scaffolding
 
 The canonical source is the parent's committed template gitlink, adopted as
-`f4e2a94371dd894ffae70eee818f51f92179d183`. Never select latest remote master or
+`720260c7d8d5096bddbd0cc6d6f90f9f311d809a`. Never select latest remote master or
 `legacy/dotnet`. Source and destination must be initialized, clean, on approved
 pins, and have canonical origins from committed `.gitmodules`. The exactly
 three-column `config/scaffolds.tsv` approves SERVICE, placeholder SHA and DOMAIN.
@@ -128,33 +128,57 @@ placeholder files are fully replaced by generated canonical versions. Old ignore
 rules are not merged. Existing destination HEAD, master, origin/master, registry
 SHA and parent pin must agree. Another worktree owning master refuses.
 
-### Policy v2 identities
+### Flat-src identity policy (policy-v2 evidence)
 
 SERVICE grammar is `goalstats-<lowercase-alphanumeric-segments>-service`.
 DOMAIN is 2–15 ASCII PascalCase characters, excluding Template and acronyms, and
 must match its registry approval. SERVICE is parsed once; multiword segments remain
-separate (`player-stats` → `goalstats_player_stats`, `goalstats-player-stats-py`).
+separate (`player-stats` → logger `goalstats_player_stats`, runtime `goalstats-player-stats-py`).
 Duplicate domains/derived identities and overlong database names refuse.
 
 | Source | User output |
 | --- | --- |
 | `template-goalstats-service` | `goalstats-user-service` |
-| `goalstats_template` | `goalstats_user` |
+| Logger label `goalstats_template` | `goalstats_user` (not a Python package) |
 | `GoalStats Template API` | `GoalStats User API` |
 | `goalstats-template-py` | `goalstats-user-py` |
 | `goalstats_template_py_local` / `_dev` | `goalstats_user_py_local` / `_dev` |
-| CI concurrency `goalstats-template-` | `goalstats-user-` (CI file only) |
+| CI concurrency `goalstats-template-${{` | `goalstats-user-${{` (CI file and its documented anchor) |
 
-Only `src/goalstats_template/**` paths rename. Import/factory/logger/coverage
-references change together. Runtime/tooling image names, Compose project constructors,
-cache prefixes, smoke guards, disposable ownership regexes and tool-container names
-change together. Generated cleanup accepts only its own test/cert project namespace,
-never a GoalStats-wide pattern. Keep internal app/runner/postgres/redis service names.
+PATH TRANSFORMATIONS: NONE. PYTHON PACKAGE DIRECTORY TRANSFORMATION: NO.
+Every canonical path remains unchanged, including `src/main.py`, `src/composition.py`,
+`src/enums/`, `src/exceptions/`, `src/settings/`, `src/models/`, `src/schemas/`,
+`src/infra/`, `src/services/` and `src/routers/`. The factory stays `main:create_app()`;
+imports and coverage stay flat. No `src/goalstats_user/` directory is created.
+Runtime/tooling images, Compose project constructors, cache prefixes, smoke guards,
+disposable ownership regexes, tool containers and CI identities change together.
+Generated cleanup accepts only its own test/cert namespace. Internal
+app/runner/postgres/redis services remain generic.
+
+The approved committed template's complete TRANSFORM inventory is path-scoped in
+`scripts/scaffold-transform.py:IDENTITY_PATHS`:
+
+| Identity | Exact permitted paths |
+| --- | --- |
+| Database prefix `goalstats_template_py` | `.env.example`; `docker/compose.local.yml`; `docker/compose.dev.yml`; `docs/service/development.md`; `docs/standard/template.md`; `scripts/smoke/runtime.py`; `scripts/validation/certify_workflows.py`; `tests/fixtures/smoke.py` |
+| Logger label `goalstats_template` | `src/main.py`; `docs/standard/template.md` |
+| Runtime `goalstats-template-py` | `.env.example`; `docker/compose.local.yml`; `docker/compose.dev.yml`; `docker/compose.test.yml`; `docs/service/development.md`; `docs/standard/template.md`; `scripts/smoke/runtime.py`; `scripts/tests/test_workflow.py`; `scripts/validation/certify_workflows.py`; `scripts/workflow.py`; `src/settings/base.py`; `tests/fixtures/smoke.py`; `tests/unit/schemas/test_domain.py` |
+| API `GoalStats Template API` | `src/main.py`; `docs/standard/template.md` |
+| Repository `template-goalstats-service` | `docs/standard/template.md` |
+| CI `goalstats-template-${{` | `.github/workflows/ci.yml`; `docs/standard/template.md` |
+
+Database substitutions cover `_local`, `_dev` and the quoted `_` runtime constructor.
+Identifiers must have valid boundaries. Any listed identity at an unapproved path,
+embedded identity, unexpected database suffix, service-package path/import, or
+unrecognized template-specific residual is INVALID. Generic `template`, `GoalStats`
+and `User` words are PRESERVE, not replacement tokens. Logger labels are service
+identities even though they share the spelling of the former package.
 
 ITEM/ACTION TRANSFORMATION: NO. Keep Item/Action models, enums, business routes,
-contracts and behavior. Package imports change, business identifiers do not.
+contracts and behavior. Flat imports and business identifiers do not change.
 Alembic revision `b7f42e9c1a60` and its entire migration file remain byte-identical;
-only env.py imports change. requirements.txt is byte-identical and remains the sole
+Alembic env.py imports already use the flat architecture and remain unchanged.
+requirements.txt is byte-identical and remains the sole
 dependency file. Makefile/make modules, mypy/pytest/Ruff configuration remain identical.
 No formatting, source execution, migration generation, provider calls or dependency
 installation occurs during transformation. Generic framework prose and Flask extension
@@ -172,7 +196,9 @@ Committed blobs are read directly, avoiding archive export attributes.
 
 Dry run is in memory: no temporary export, lock creation, journal, bytecode, optional
 index refresh or branch attachment. It prints SERVICE, DOMAIN, source/destination SHAs,
-package mapping, runtime/API/database/cache identities, dynamic file count and branch
+`SOURCE_LAYOUT=flat-src`, `FACTORY_TARGET=main:create_app()`,
+`PYTHON_PACKAGE_DIRECTORY_TRANSFORMATION=NO`, `PATH_TRANSFORMATIONS=0`,
+runtime/API/database/cache identities, dynamic file count and branch
 action, with `ITEM_ACTION_TRANSFORMATION=NO` and `WRITES=NONE`. An existing operation
 or lock refuses. Preview is not a reservation; actual operation revalidates.
 

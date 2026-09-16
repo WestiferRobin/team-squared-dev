@@ -1,22 +1,54 @@
-"""Pure policy v2: committed bytes in, identity-only bytes out. No I/O."""
+"""Pure flat-src identity policy; evidence v2: committed bytes in, identity-only bytes out. No I/O."""
 
 from pathlib import PurePosixPath
 import re
 
 POLICY = 2
-CANONICAL_SHA = "f4e2a94371dd894ffae70eee818f51f92179d183"
+CANONICAL_SHA = "720260c7d8d5096bddbd0cc6d6f90f9f311d809a"
 MIGRATION = "alembic/versions/b7f42e9c1a60_initial_items_actions.py"
-TOKENS = (
-    b"goalstats_template",
-    b"goalstats-template-py",
-    b"GoalStats Template API",
-    b"template-goalstats-service",
-)
+# Exact service/database/logger identities, never a Python package mapping.
+IDENTITY_PATHS = {
+    b"goalstats_template_py": {
+        ".env.example",
+        "docker/compose.local.yml",
+        "docker/compose.dev.yml",
+        "docs/service/development.md",
+        "docs/standard/template.md",
+        "scripts/smoke/runtime.py",
+        "scripts/validation/certify_workflows.py",
+        "tests/fixtures/smoke.py",
+    },
+    b"goalstats_template": {"src/main.py", "docs/standard/template.md"},
+    b"goalstats-template-py": {
+        ".env.example",
+        "docker/compose.local.yml",
+        "docker/compose.dev.yml",
+        "docker/compose.test.yml",
+        "docs/service/development.md",
+        "docs/standard/template.md",
+        "scripts/smoke/runtime.py",
+        "scripts/tests/test_workflow.py",
+        "scripts/validation/certify_workflows.py",
+        "scripts/workflow.py",
+        "src/settings/base.py",
+        "tests/fixtures/smoke.py",
+        "tests/unit/schemas/test_domain.py",
+    },
+    b"GoalStats Template API": {"src/main.py", "docs/standard/template.md"},
+    b"template-goalstats-service": {"docs/standard/template.md"},
+    b"goalstats-template-${{": {
+        ".github/workflows/ci.yml",
+        "docs/standard/template.md",
+    },
+}
+TOKENS = tuple(IDENTITY_PATHS)
 RESERVED = TOKENS + (
     b"goalstats-template-",
     b"GoalStats.Template",
     b"TemplateDbContext",
 )
+FACTORY = "main:create_app()"
+
 TEXT_SUFFIXES = {
     ".py",
     ".md",
@@ -64,26 +96,34 @@ def identity(service, domain):
     )
     stem = service[len("goalstats-") : -len("-service")]
     require(stem != "template", "Template cannot be a destination")
-    package = "goalstats_" + stem.replace("-", "_")
+    logger = "goalstats_" + stem.replace("-", "_")
+    database = logger + "_py"
     slug = "goalstats-" + stem + "-py"
     require(
-        len(package + "_py_local") <= 63 and len(slug) <= 60,
+        len(database + "_local") <= 63 and len(slug) <= 60,
         "Derived identity too long",
     )
     return dict(
         service=service,
         domain=domain,
         stem=stem,
-        package=package,
+        logger=logger,
+        database=database,
+        factory=FACTORY,
         slug=slug,
         api="GoalStats " + domain + " API",
-        local=package + "_py_local",
-        dev=package + "_py_dev",
+        local=database + "_local",
+        dev=database + "_dev",
         test="goalstats_test_runtime",
     )
 
 
 def validate_path(path):
+    require(isinstance(path, str), "Unsafe payload path: " + repr(path))
+    require(
+        not path.startswith("src/goalstats_") and path != "src/__init__.py",
+        "Service package/root package is incompatible with flat src: " + path,
+    )
     require(
         isinstance(path, str)
         and re.fullmatch(r"[A-Za-z0-9._/-]+", path)
@@ -175,45 +215,70 @@ def collision_check(paths):
 
 
 def anchors(
-    package="goalstats_template",
+    database="goalstats_template_py",
     slug="goalstats-template-py",
     api="GoalStats Template API",
     service="template-goalstats-service",
+    logger="goalstats_template",
 ):
-    p = "src/" + package + "/"
     return {
-        p + "__init__.py": (b"create_app",),
-        p + "main.py": (b"def create_app(", api.encode()),
-        p + "composition.py": (package.encode(),),
-        p + "models/base.py": (b"DeclarativeBase",),
-        p + "models/item.py": (b"Item",),
-        p + "models/action.py": (b"Action",),
-        p + "settings/base.py": ((slug + ":local:v1").encode(),),
+        "src/main.py": (
+            b"def create_app(",
+            api.encode(),
+            (f'logging.Logger("{logger}"').encode(),
+        ),
+        "src/composition.py": (
+            b"def get_database(",
+            b"def get_item_service(",
+            b"def get_action_service(",
+        ),
+        "src/enums/item.py": (b"ItemStatus",),
+        "src/enums/action.py": (b"ActionType",),
+        "src/exceptions/base.py": (b"DomainError",),
+        "src/models/base.py": (b"DeclarativeBase",),
+        "src/models/item.py": (b"Item",),
+        "src/models/action.py": (b"Action",),
+        "src/schemas/base.py": (b"RequestSchema",),
+        "src/infra/resources/db.py": (b"class Database", b"def transaction("),
+        "src/infra/resources/redis.py": (b"class RedisCache",),
+        "src/infra/repositories/item.py": (b"class ItemRepository",),
+        "src/infra/repositories/action.py": (b"class ActionRepository",),
+        "src/infra/caches/item.py": (b"class ItemCache",),
+        "src/infra/caches/action.py": (b"class ActionCache",),
+        "src/services/item/item.py": (b"class ItemService",),
+        "src/services/item/action.py": (b"class ActionService",),
+        "src/routers/item/item.py": (b"def create_items_blueprint(",),
+        "src/routers/item/action.py": (b"def create_actions_blueprint(",),
+        "src/settings/base.py": ((slug + ":local:v1").encode(),),
         "Dockerfile": (
             b"python:3.12-",
-            (package + ":create_app()").encode(),
+            FACTORY.encode(),
             b"gunicorn",
+            b"PYTHONPATH=/app/src",
         ),
-        "requirements.txt": (
-            b"Flask==",
-            b"SQLAlchemy==",
-            b"alembic==",
-            b"redis==",
-            b"flask-smorest==",
-            b"marshmallow==",
-            b"pytest==",
-            b"gunicorn==",
+        "requirements.txt": tuple(
+            x.encode() + b"=="
+            for x in [
+                "Flask",
+                "SQLAlchemy",
+                "alembic",
+                "redis",
+                "flask-smorest",
+                "marshmallow",
+                "pytest",
+                "gunicorn",
+            ]
         ),
-        "alembic.ini": (b"alembic",),
-        "alembic/env.py": (package.encode(),),
+        "alembic.ini": (b"%(here)s/src",),
+        "alembic/env.py": (b"import models", b"from models.base import Base"),
         MIGRATION: (b"b7f42e9c1a60",),
         "docker/compose.local.yml": (
-            (package + "_py_local").encode(),
+            (database + "_local").encode(),
             (slug + ":runtime").encode(),
-            (package + ":create_app()").encode(),
+            FACTORY.encode(),
         ),
         "docker/compose.dev.yml": (
-            (package + "_py_dev").encode(),
+            (database + "_dev").encode(),
             (slug + ":runtime").encode(),
         ),
         "docker/compose.test.yml": (
@@ -224,17 +289,20 @@ def anchors(
             (slug + "-(test|cert)-[a-f0-9]+").encode(),
             (slug + "-tool-").encode(),
             (slug + ":tooling").encode(),
+            b"--cov=src",
         ),
         "scripts/smoke/runtime.py": (
-            (package + "_py_dev").encode(),
+            (database + "_dev").encode(),
             (slug + ":dev:v1").encode(),
         ),
         "tests/fixtures/smoke.py": ((slug + "-cert-[a-f0-9]+").encode(),),
         ".github/workflows/ci.yml": ((slug[:-3] + "-${{").encode(), b"'3.12'"),
-        "docs/standard/template.md": (service.encode(), api.encode()),
+        "docs/standard/template.md": (service.encode(), api.encode(), FACTORY.encode()),
+        "pytest.ini": (b"pythonpath = src scripts",),
+        "mypy.ini": (b"mypy_path = src",),
         "Makefile": (b"include make/",),
         ".gitignore": (b"__pycache__/",),
-        "README.md": (b"Flask",),
+        "README.md": (b"Flask", FACTORY.encode()),
         **{
             "make/" + name + ".mk": ()
             for name in ["install", "doctor", "dev", "db", "test", "coverage", "ci"]
@@ -242,12 +310,24 @@ def anchors(
     }
 
 
+def check_flat_content(path, data):
+    if path.endswith(".py"):
+        require(
+            not re.search(rb"(?:from|import)\s+goalstats_[A-Za-z0-9_]+", data),
+            "Obsolete service package import: " + path,
+        )
+
+
 def check_anchors(payload, values=None):
     expected = (
         anchors()
         if values is None
         else anchors(
-            values["package"], values["slug"], values["api"], values["service"]
+            values["database"],
+            values["slug"],
+            values["api"],
+            values["service"],
+            values["logger"],
         )
     )
     for path, tokens in expected.items():
@@ -262,10 +342,12 @@ def transform(data, values, path):
         zip(
             TOKENS,
             [
-                values["package"].encode(),
+                values["database"].encode(),
+                values["logger"].encode(),
                 values["slug"].encode(),
                 values["api"].encode(),
                 values["service"].encode(),
+                ("goalstats-" + values["stem"] + "-${{").encode(),
             ],
         )
     )
@@ -274,18 +356,26 @@ def transform(data, values, path):
     def replace(match):
         token = match.group()
         a, b = match.span()
+        require(path in IDENTITY_PATHS[token], "Unexpected identity location: " + path)
         require(
             not (a and re.match(rb"[A-Za-z0-9_]", data[a - 1 : a])),
             "Embedded identity: " + path,
         )
         tail = data[b:]
-        if token == b"goalstats_template" and tail.startswith(b"_py_"):
-            pass  # Approved database prefix, including its runtime f-string constructor.
+        if token == b"goalstats_template_py":
+            require(
+                re.match(rb"_(?:local|dev)(?![A-Za-z0-9_])|_(?=[\"'])", tail),
+                "Unexpected database identity: " + path,
+            )
         else:
             require(
                 not re.match(rb"[A-Za-z0-9_]", tail[:1]), "Embedded identity: " + path
             )
-        if token in {b"goalstats-template-py", b"template-goalstats-service"}:
+        if token in {
+            b"goalstats-template-py",
+            b"template-goalstats-service",
+            b"goalstats-template-${{",
+        }:
             require(
                 not (
                     a >= 2
@@ -296,11 +386,8 @@ def transform(data, values, path):
             )
         return replacements[token]
 
+    check_flat_content(path, data)
     result = pattern.sub(replace, data)
-    if path == ".github/workflows/ci.yml":
-        result = result.replace(
-            b"goalstats-template-${{", ("goalstats-" + values["stem"] + "-${{").encode()
-        )
     require(not any(t in result for t in RESERVED), "Residual identity: " + path)
     return result
 
@@ -315,11 +402,7 @@ def plan(payload, service, domain):
             mode in {"100644", "100755"} and isinstance(data, bytes),
             "Unsupported Git mode/blob: " + old,
         )
-        new = (
-            old.replace("src/goalstats_template/", "src/" + values["package"] + "/", 1)
-            if old.startswith("src/goalstats_template/")
-            else old
-        )
+        new = old  # Flat modules and every other path retain their canonical names.
         require(
             not any(t.decode() in new for t in RESERVED),
             "Residual path identity: " + old,

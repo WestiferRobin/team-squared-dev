@@ -38,7 +38,7 @@ existing master automatically during installation; preview does not attach.
 ## Bootstrap an approved Python service
 
 Python 3.12 is required for scaffolding (standard library only). The parent-pinned
-Flask template is `f4e2a94371dd894ffae70eee818f51f92179d183`. Setup/sync remain
+Flask template is `720260c7d8d5096bddbd0cc6d6f90f9f311d809a`. Setup/sync remain
 Git-only; scaffold never fetches, installs packages, runs Docker, or executes template code.
 
 ```sh
@@ -52,9 +52,10 @@ master and leaves generated files unstaged. Parent must be clean on master; dest
 HEAD, master, origin/master, registry placeholder SHA and parent pin must agree.
 No branch is created. A second invocation refuses; there is no overwrite mode.
 
-DOMAIN changes service identity only: `goalstats_template` → `goalstats_user`,
+DOMAIN changes service identity only, including the logger label and database prefix:
 `GoalStats Template API` → `GoalStats User API`, and `goalstats-template-py` →
-`goalstats-user-py`. Item/Action and the reference migration remain intact. No User
+`goalstats-user-py`. Source paths remain flat under `src/`; the factory stays
+`main:create_app()`. No Python package directory or import is renamed. Item/Action and the reference migration remain intact. No User
 model, authentication, login or registration is generated. The approved placeholder
 README and ignore file are replaced exactly, never merged with old runtime rules.
 

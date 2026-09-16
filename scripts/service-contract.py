@@ -35,7 +35,11 @@ def classify(root, service, domain, approved, incomplete=False):
                     pass
         files = {}
         for path in s.t.anchors(
-            values["package"], values["slug"], values["api"], values["service"]
+            values["database"],
+            values["slug"],
+            values["api"],
+            values["service"],
+            values["logger"],
         ):
             p = s.safe_path(root / path)
             if not p.is_file():
@@ -46,11 +50,17 @@ def classify(root, service, domain, approved, incomplete=False):
             for base, dirs, names in os.walk(root / directory, followlinks=False):
                 for name in dirs + names:
                     p = Path(base) / name
+                    if (
+                        p.relative_to(root).as_posix().startswith("src/goalstats_")
+                        or p == root / "src/__init__.py"
+                    ):
+                        return "INVALID", "Service package incompatible with flat src"
                     if p.is_symlink():
                         return "INVALID", "Symlink in application tree"
                     if p.suffix in {".cs", ".csproj", ".sln"}:
                         return "INVALID", "Mixed legacy/Python payload"
                     if p.is_file() and p.suffix in s.t.TEXT_SUFFIXES:
+                        s.t.check_flat_content(str(p), p.read_bytes())
                         if any(token in p.read_bytes() for token in s.t.RESERVED):
                             return "INVALID", "Residual template/legacy identity"
         if any(root.glob("*.sln")) or (root / "global.json").exists():

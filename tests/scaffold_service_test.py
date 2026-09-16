@@ -15,10 +15,14 @@ class Scaffold(Fixture, unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stdout)
         self.assertEqual(before, self.snap(self.base))
         self.assertFalse(self.lock.exists())
+        self.assertNotIn("PACKAGE=", p.stdout)
         for token in [
             "WRITES=NONE",
             "ITEM_ACTION_TRANSFORMATION=NO",
-            "goalstats_user",
+            "SOURCE_LAYOUT=flat-src",
+            "FACTORY_TARGET=main:create_app()",
+            "PYTHON_PACKAGE_DIRECTORY_TRANSFORMATION=NO",
+            "PATH_TRANSFORMATIONS=0",
             "goalstats-user-py",
             "goalstats_test_runtime",
             "PLANNED_FILES=" + str(len(PAYLOAD)),

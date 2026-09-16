@@ -51,3 +51,27 @@ class ServiceContract(Fixture, unittest.TestCase):
             self.assertNotEqual(p.returncode, 0)
             self.assertIn("PLACEHOLDER", p.stdout)
             self.assertIn("no runtime tooling", p.stdout)
+
+    def test_mixed_package_layout(self):
+        self.assertEqual(self.invoke().returncode, 0)
+        for package in ["goalstats_user", "goalstats_template"]:
+            p = self.dest / "src" / package
+            p.mkdir()
+            self.assertEqual(self.classify(), "INVALID")
+            p.rmdir()
+
+    def test_old_package_layout(self):
+        self.assertEqual(self.invoke().returncode, 0)
+        source = self.dest / "src"
+        paths = list(source.iterdir())
+        package = source / "goalstats_user"
+        package.mkdir()
+        for p in paths:
+            p.rename(package / p.name)
+        self.assertEqual(self.classify(), "INVALID")
+
+    def test_stale_package_import(self):
+        self.assertEqual(self.invoke().returncode, 0)
+        p = self.dest / "src/main.py"
+        p.write_text(p.read_text() + "\nfrom goalstats_user.models import Item\n")
+        self.assertEqual(self.classify(), "INVALID")

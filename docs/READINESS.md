@@ -1,12 +1,12 @@
 # Workspace, scaffold and runtime readiness
 
 The workspace adopts canonical Flask template
-`f4e2a94371dd894ffae70eee818f51f92179d183` with compatible Python policy-v2 tooling.
+`720260c7d8d5096bddbd0cc6d6f90f9f311d809a` with compatible flat-src identity tooling and policy-v2 failure evidence.
 The template gitlink and compatible parent tooling are released together.
 
 | Component | Intended pin | State |
 | --- | --- | --- |
-| Template (reference) | f4e2a94371dd894ffae70eee818f51f92179d183 | Canonical Python 3.12 Flask template; disposable generated runtime certified |
+| Template (reference) | 720260c7d8d5096bddbd0cc6d6f90f9f311d809a | Canonical Python 3.12 Flask template; disposable generated runtime certified |
 | User (active) | 70c77c692993fc18e9f484bf22266a15288c0541 | Placeholder commit; real working tree dirty and preserved |
 | App (active) | d7e77e711b4286481a35ffb3a98c8b2892ffe8cf | Unchanged; standalone manual verification not claimed |
 | Wiki (docs) | d3992eb4d0c2e2b0b99fee0ab9da14da422c2071 | Unchanged |
@@ -20,7 +20,9 @@ checks. Use disposable candidate commits during independent certification.
 ## Static Python state and runtime boundary
 
 `service-contract.py` reports PLACEHOLDER, SCAFFOLDED, INCOMPLETE or INVALID without
-executing child code. Placeholder, partial installation, mixed legacy/Python, residual
+executing child code. Flat `src/main.py`/`src/composition.py` and `main:create_app()`
+are required; old service-package or mixed layouts refuse. Placeholder, partial
+installation, mixed legacy/Python, residual
 identity and missing anchors block delegation. SCAFFOLDED means structural readiness,
 not certified runtime behavior. Parent test validates all backend contracts before any
 active suite is invoked. Full-stack commands additionally require complete parent
