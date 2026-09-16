@@ -37,6 +37,16 @@ load_compose() {
   compose=(docker compose --env-file /dev/null -p "$project" -f "infra/compose.$mode.yml")
 }
 
+# Classify approved Python backends before executing any child tooling.
+check_python_contracts() {
+  local role name path rest errors=0
+  while read -r role name path rest; do
+    [[ "$role" == active && "$path" == backend/* ]] || continue
+    python3 -I -B scripts/service-contract.py "$path" || errors=1
+  done < "$registry"
+  return "$errors"
+}
+
 # Fail as a complete box, never silently run just the frontend or the template.
 check_contracts() {
   local errors=0 services
@@ -75,6 +85,7 @@ probe() {
 }
 
 if [[ "$action" == test ]]; then
+  check_python_contracts || fail 'Python service not ready; no active suite was run.'
   missing=0
   while read -r role name path service migration ready body health smoke; do
     [[ "$role" == active ]] || continue
@@ -89,6 +100,9 @@ if [[ "$action" == test ]]; then
   done < "$registry"
   exit 0
 fi
+case "$action" in
+  build|run|migrate|smoke) check_python_contracts || fail 'Python service not ready; no runtime tooling was run.' ;;
+esac
 load_compose
 case "$action" in
   stop) exec "${compose[@]}" down ;;

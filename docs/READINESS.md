@@ -1,92 +1,42 @@
-# Workspace ready; active runtime pending
+# Workspace, scaffold and runtime readiness
 
-The parent provides Git-only setup and safe sync. Workspace readiness means every
-child is present at its approved gitlink SHA, with canonical URLs and parent env
-files prepared by setup. It does not certify application runtime behavior.
+The workspace adopts canonical Flask template
+`f4e2a94371dd894ffae70eee818f51f92179d183` with compatible Python policy-v2 tooling.
+The template gitlink and compatible parent tooling are released together.
 
-| Role | Component | Pinned SHA | State |
-| --- | --- | --- | --- |
-| ACTIVE | frontend/goal-stats-app | d7e77e711b4286481a35ffb3a98c8b2892ffe8cf | Published containerized scaffold; standalone manual verification pending. |
-| ACTIVE | backend/goalstats-user-service | 70c77c692993fc18e9f484bf22266a15288c0541 | Runtime contract pending; no application/container/test contract. |
-| REFERENCE | backend/template-goalstats-service | 07a75b4a8e6e83429c41c51527691870884d76e8 | Certified template baseline; Mac verification passed. Reference only. |
-| REFERENCE | frontend/RoadToTheFinal | 4c77197e209292f70ae788e6d4539bb89189e963 | Excluded from active operations. |
-| DOCS | docs/goal-stats-wiki | d3992eb4d0c2e2b0b99fee0ab9da14da422c2071 | Project/class documentation; excluded from runtime and dev tests. |
+| Component | Intended pin | State |
+| --- | --- | --- |
+| Template (reference) | f4e2a94371dd894ffae70eee818f51f92179d183 | Canonical Python 3.12 Flask template; disposable generated runtime certified |
+| User (active) | 70c77c692993fc18e9f484bf22266a15288c0541 | Placeholder commit; real working tree dirty and preserved |
+| App (active) | d7e77e711b4286481a35ffb3a98c8b2892ffe8cf | Unchanged; standalone manual verification not claimed |
+| Wiki (docs) | d3992eb4d0c2e2b0b99fee0ab9da14da422c2071 | Unchanged |
+| RoadToTheFinal (reference) | 4c77197e209292f70ae788e6d4539bb89189e963 | Unchanged; main exception |
 
-## Workspace scope
+Setup materializes committed pins; sync fast-forwards approved parent master and
+materializes its exact pins. Both remain Git-only and preserve dirty/off-pin work.
+The working-tree implementation cannot be used to bypass committed-source/clean-parent
+checks. Use disposable candidate commits during independent certification.
 
-`make setup` succeeds on a safe checkout even while runtime is pending. It prepares
-the current parent commit, including feature branches or historical commits.
-`make sync` requires clean parent master and children at current pins, fast-forwards
-to published master, then materializes its exact approved pins. Neither requires
-Docker. This adoption advances only the template to the exact approved commit
-above. User-service, app, wiki, and RoadToTheFinal pins are preserved.
-No child source, application feature, or runtime topology changes here.
-See [validation](VALIDATION.md) for exercised cases and [development](DEVELOPMENT.md)
-for safe child development and parent pin review.
+## Static Python state and runtime boundary
 
-## Runtime boundary
+`service-contract.py` reports PLACEHOLDER, SCAFFOLDED, INCOMPLETE or INVALID without
+executing child code. Placeholder, partial installation, mixed legacy/Python, residual
+identity and missing anchors block delegation. SCAFFOLDED means structural readiness,
+not certified runtime behavior. Parent test validates all backend contracts before any
+active suite is invoked. Full-stack commands additionally require complete parent
+registry/Compose contracts; frontend-only startup is never substituted.
 
-GOALSTATS-USER-SERVICE REMAINS ACTIVE BUT RUNTIME-PENDING
+User registry migration/readiness/health/smoke fields remain pending; parent Compose
+remains frontend-only. No full-stack runtime readiness is claimed. Template/reference
+and docs components remain excluded from active operations.
 
-FULL-STACK RUNTIME VERIFICATION DEFERRED UNTIL GOALSTATS-USER-SERVICE IS IMPLEMENTED
+## Remaining sequence
 
-The registry retains pending migration/readiness/health/smoke values for the user
-service. Neither Compose file defines its runtime contract. The app now contains
-its Dockerfile and Makefile, but standalone app manual verification remains pending.
-Complete-stack build/run/migrate/smoke refuse partial
-operations, and `make test` requires every active child's normal test interface.
-References and documentation cannot substitute for an active service.
+Prompt 2 certifies disposable generation and full generated runtime and releases
+parent tooling and pin adoption together. Prompt 3 separately preserves and
+reconciles real User, generates/certifies/publishes its Item/Action baseline, then
+updates the parent User pin. Actual User business logic and parent runtime integration
+are later work. Existing TODO changes and User README/deleted .gitignore remain unchanged.
 
-No full-stack runtime, migration, connectivity, smoke, or active test certification
-is claimed. Workspace success with these runtime blockers is intentional.
-
-## User-service bootstrap boundary
-
-Source: `backend/template-goalstats-service` at
-`07a75b4a8e6e83429c41c51527691870884d76e8`. Its approved certification includes
-Mac verification; this parent task verifies the selected contents without rerunning
-standalone template certification.
-
-Destination: `backend/goalstats-user-service` at placeholder commit
-`70c77c692993fc18e9f484bf22266a15288c0541`. The workspace provides both repositories
-for a later tracked template export into user-service master. No export,
-branch creation, or product implementation is performed by pin adoption.
-
-## Scaffold tooling boundary
-
-The parent now provides `make scaffold-service SERVICE=<approved-service> DOMAIN=<approved-domain>` and
-`DRY_RUN=true` for an explicitly approved placeholder on clean master or safely detached at its approved master pin.
-This is deterministic identity transformation using Python 3.9+, independent of
-Docker/network after setup. DOMAIN is required and registry-approved.
-It does not implement or certify the destination service. Actual-template disposable
-certification passed, including exact payload and Git preservation checks. A successful
-real dry run is still required before using it on the real user service. The real
-child needs matching existing master/origin/master refs; scaffold previews attachment
-without writes and attaches only during installation. Any dirty parent work must be
-resolved before preview. TODO.md is already tracked and must remain preserved.
-Only the certified template pin is adopted. The real user service remains untouched
-and runtime-pending. The disposable generated User skeleton passed build, EF,
-553 tests (260 unit / 293 integration) and LOCAL/DEV runtime checks. This does not certify the real placeholder
-or the active parent composition. Item/Action remain examples; no business-domain
-generation occurs.
-
-
-## Scaffold final verification and recovery support
-
-The verifier now allows only incidental build output beneath manifest-declared
-.NET project `bin/obj` directories; all intended payload remains byte/mode exact
-and arbitrary extras still refuse. Explicit `make recover-scaffold` verifies a
-completed interrupted installation and archives its marker without reinstalling,
-staging or committing. See [recovery requirements](DEVELOPMENT.md#explicit-scaffold-recovery).
-The real User incomplete marker, payload and retained evidence are unchanged by
-this implementation and disposable certification. Real recovery remains a separate task.
-
-
-Recovery parent-HEAD compatibility now requires explicit `OPERATION_PARENT` and
-`RECOVERY_TOOLING_SHA` inputs. Only the externally certified tooling commit and a
-compatible linear history can recover an older operation. Original pins, registries,
-transformer and evidence remain authoritative. Disposable certification covers the
-old-verifier failure followed by compatible tooling advancement and recovery, plus
-553 generated tests and LOCAL/DEV workflows. See the current
-[certification record](VALIDATION.md#recovery-compatible-tooling-certification).
-Real User recovery must use the exact separately recorded published tooling SHA.
+Historical .NET certification and policy-1 recovery evidence are archival only; see
+[validation history](VALIDATION.md). The Python scaffold never consumes or deletes it.

@@ -9,10 +9,8 @@ DRY_RUN ?= false
 override SERVICE := $(value SERVICE)
 override DOMAIN := $(value DOMAIN)
 override DRY_RUN := $(value DRY_RUN)
-override OPERATION_PARENT := $(value OPERATION_PARENT)
-override RECOVERY_TOOLING_SHA := $(value RECOVERY_TOOLING_SHA)
-export SERVICE DOMAIN DRY_RUN OPERATION_PARENT RECOVERY_TOOLING_SHA
-.PHONY: help setup sync scaffold-service recover-scaffold build run stop logs migrate test smoke
+export SERVICE DOMAIN DRY_RUN
+.PHONY: help setup sync scaffold-service build run stop logs migrate test smoke
 help:
 	@printf '%s\n' \
 	  'Canonical workspace: edit independent child repositories directly.' \
@@ -20,10 +18,8 @@ help:
 	  '  make help                    Show scope and commands' \
 	  '  make setup                   Prepare this checkout and missing env files; no Docker' \
 	  '  make sync                    Fast-forward parent master; synchronize approved pins; no Docker' \
-	  '  make scaffold-service SERVICE=<service> DOMAIN=<Domain>  Transform pinned template identity' \
+	  '  make scaffold-service SERVICE=<service> DOMAIN=<Domain>  Transform pinned Flask identity (Python 3.12)' \
 	  '    Safe pinned detached/master destination; actual attaches to master.' \
-	  '  make recover-scaffold SERVICE=<service> DOMAIN=<Domain> OPERATION_PARENT=<sha> RECOVERY_TOOLING_SHA=<sha> [DRY_RUN=true]' \
-	  '    Verify an incomplete scaffold; actual recovery finalizes without copying files.' \
 	  '' 'FULL STACK' \
 	  '  make build [ENV=local|dev]    Build every active image' \
 	  '  make run [ENV=local|dev]      Start one box; wait for required readiness' \
@@ -35,7 +31,7 @@ help:
 	  '  make smoke [ENV=local|dev]    Check the running box and internal connectivity' \
 	  '' 'ENV defaults to local. LOCAL: developer containers. DEV: built verification containers.' \
 	  'First use: make setup. Runtime later: make migrate; make run.' \
-	  'Scaffold previews without writes; no feature branch required. Use child make help.' \
+	  'DRY_RUN=true previews with no writes. DOMAIN changes identity, never Item/Action.' \
 	  'Active contracts must be complete before the box can build or run.' \
 	  'goalstats-user-service runtime contract pending; references and docs are non-runtime.' \
 	  'See docs/READINESS.md and docs/DEVELOPMENT.md.'
@@ -48,6 +44,3 @@ build run stop logs migrate test smoke:
 
 scaffold-service:
 	@bash scripts/scaffold-service.sh
-
-recover-scaffold:
-	@python3 -I -B scripts/recover-scaffold.py

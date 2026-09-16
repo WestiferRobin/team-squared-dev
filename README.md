@@ -35,31 +35,40 @@ Owned repositories use master only; RoadToTheFinal retains its main exception.
 Detached children at pins are normal. Scaffold attaches its safe destination to
 existing master automatically during installation; preview does not attach.
 
-## Bootstrap an approved service
+## Bootstrap an approved Python service
 
-`make scaffold-service SERVICE=goalstats-user-service DOMAIN=User DRY_RUN=true`
-previews transforming identity in exact tracked files from the parent-pinned reference template into an approved
-placeholder. Omit `DRY_RUN=true` to install after a successful preview. The destination
-must be clean on master or safely detached, with HEAD, local master, origin/master,
-parent pin and approved placeholder SHA equal. Missing/mismatched refs or another
-branch refuse; no branch is created. Scaffold remains offline after setup. Parent
-changes, including untracked TODO.md, block the command; unrelated child work does
-not. Python 3.9+ is required. No Docker or network is required after setup.
+Python 3.12 is required for scaffolding (standard library only). The parent-pinned
+Flask template is `f4e2a94371dd894ffae70eee818f51f92179d183`. Setup/sync remain
+Git-only; scaffold never fetches, installs packages, runs Docker, or executes template code.
 
-Scaffolding preserves the destination Git repository and leaves unstaged child
-changes. It maps GoalStats.Template.* and TemplateDbContext to GoalStats.<DOMAIN>.* and
-<DOMAIN>DbContext. Item/Action remain examples; no business-domain generation or
-runtime certification occurs. DOMAIN is required and must match registry approval. A second
-invocation refuses. See the [scaffold contract and beginner workflow](docs/DEVELOPMENT.md#service-scaffolding)
-before use. The generated User skeleton passed disposable build, EF, test and
-LOCAL/DEV runtime certification. It still contains example Item/Action behavior,
-not real User functionality. Real-service use requires resolving local safety
-blockers and reviewing a successful preview in a separate explicit task.
+```sh
+make scaffold-service SERVICE=goalstats-user-service DOMAIN=User DRY_RUN=true
+make scaffold-service SERVICE=goalstats-user-service DOMAIN=User
+```
 
-Final verification permits only incidental `bin/` and `obj/` beneath project roots
-declared by generated `.csproj` files. Other extras still refuse. Incomplete
-operations require explicit [recovery verification](docs/DEVELOPMENT.md#explicit-scaffold-recovery);
-recovery preserves files and clears the marker only after every check passes.
+Preview performs no filesystem or Git writes, including no temporary export or lock.
+Actual installation safely attaches an approved detached destination to existing
+master and leaves generated files unstaged. Parent must be clean on master; destination
+HEAD, master, origin/master, registry placeholder SHA and parent pin must agree.
+No branch is created. A second invocation refuses; there is no overwrite mode.
+
+DOMAIN changes service identity only: `goalstats_template` → `goalstats_user`,
+`GoalStats Template API` → `GoalStats User API`, and `goalstats-template-py` →
+`goalstats-user-py`. Item/Action and the reference migration remain intact. No User
+model, authentication, login or registration is generated. The approved placeholder
+README and ignore file are replaced exactly, never merged with old runtime rules.
+
+Installation uses atomic replacement per file, not an atomic whole-tree transaction.
+Failure preserves partial work and durable evidence beneath parent Git administration
+in `team-squared-scaffold-incomplete`; retry refuses. Preserve and inspect that state
+before deliberate reconciliation. No automatic rollback or recovery command exists.
+Historical policy-1 evidence is never consumed or deleted by the Python scaffolder.
+
+Read [the transformation contract](docs/DEVELOPMENT.md#service-scaffolding).
+The Python tooling and disposable generated runtime are independently certified;
+see [validation results](docs/VALIDATION.md). Real User preservation/scaffolding
+belongs to Prompt 3.
+Existing tracked TODO changes and dirty User are intentionally preserved blockers.
 
 ## Repositories
 
@@ -81,7 +90,6 @@ make help
 make setup
 make sync
 make scaffold-service SERVICE=<approved-service> DOMAIN=<approved-domain> [DRY_RUN=true]
-make recover-scaffold SERVICE=<approved-service> DOMAIN=<approved-domain> OPERATION_PARENT=<original-sha> RECOVERY_TOOLING_SHA=<certified-sha> [DRY_RUN=true]
 make build [ENV=local|dev]
 make run [ENV=local|dev]
 make stop [ENV=local|dev]

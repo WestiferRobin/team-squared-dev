@@ -1,3 +1,101 @@
+# Python scaffold policy v2 — certification
+
+## Prompt 2 independent certification (2026-09-16)
+
+Canonical template: `f4e2a94371dd894ffae70eee818f51f92179d183`.
+A fresh disposable parent candidate was built from exactly the intended parent
+changes and canonical template gitlink, excluding dirty TODO and real User work.
+Setup and sync initialized all five approved pins without application setup.
+
+An independent checker read every committed template blob and compared generated
+paths, bytes, Git modes and directory sets: **120 files, 50 package paths renamed,
+58 content changes**. These are observations for this commit, not policy constants.
+Item/Action identity, migration `b7f42e9c1a60`, migration bytes, requirements,
+Docker digests and framework identities are preserved. No User business logic
+is introduced. No residual service identity or unexpected files remain.
+
+Both preview and installation passed under a macOS sandbox denying network access.
+Preview preserved a complete filesystem/Git snapshot, including directories and
+metadata. Installation attached existing master without changing destination HEAD,
+refs, origin, index, Git pointer or parent destination pin. Both repeat forms refused.
+The fresh candidate parent run passed **75 tests, zero failures, zero skips**:
+13 transformer, 35 scaffold, 19 workspace and eight service-contract tests.
+Six additional disposable certification tests passed. They covered attachment
+failure with retained phase evidence,
+wrong parent branch, mismatched master/origin-master, missing origin-master and
+delegation across all four static states. Historical recovery machinery remains
+removed and retained policy-1 evidence is not consumed.
+
+Generated runtime certification used a fresh Python 3.12 venv with only
+`pip install -r requirements.txt`. Ruff lint, formatting (86 files) and mypy
+(52 source files) passed. Unit **85**, integration **49**, full **134**, smoke **8**
+and workflow tooling **19** tests passed, with zero unexplained skips. Coverage
+was **99%** (775 statements, two misses). All unit/integration/smoke/tooling node IDs
+matched the canonical template after approved identity normalization.
+
+Real PostgreSQL catalog comparison found no schema change. Migration upgrade,
+repeat upgrade, downgrade/re-upgrade and migration-check passed without pending
+model changes. OpenAPI and route methods matched after normalizing only the API
+title. LOCAL reload/read-only source mount/Swagger and LOCAL/DEV persistence passed.
+DEV ran built non-root Gunicorn; TEST remained isolated. Health/readiness outages,
+cache fallback, Problem Details, built smoke, failure cleanup, SIGTERM/SIGINT and
+unrelated-resource preservation passed through `make certify`. Its deliberately
+failing smoke assertion is an expected cleanup test, not a normal-suite failure.
+The workflow compared Docker inventories (baseline: five containers, 63 images,
+six networks, 11 volumes), preserving pre-existing resources; no global prune ran.
+
+Real User files and Git metadata and the pre-existing TODO change are preserved.
+User remains pinned at `70c77c692993fc18e9f484bf22266a15288c0541`; sibling pins
+are unchanged. Parent full-stack readiness and real User reconciliation remain
+separate work. This record describes pre-publication certification; publication
+and verification of the published fresh clone are reported with the release result.
+
+## Prompt 1 implementation record
+
+Canonical template: `f4e2a94371dd894ffae70eee818f51f92179d183`.
+The following implementation record predates the independent Prompt 2 results above.
+
+Run parent tests with Python 3.12 and bytecode disabled:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3.12 -B -m unittest discover -s tests -p '*_test.py'
+```
+
+Fixtures read the canonical template commit from the local template object database;
+they create only disposable parent/child repositories and local origins. Independent
+golden substitution checks compare all canonical files, paths and modes. Tests cover
+write-free preview, exact installation, Git preservation, attachment, failures,
+concurrency, offline behavior, strict artifacts, and static runtime guards. Existing
+workspace setup/sync regression coverage remains separate and unchanged.
+
+The real User and existing tracked TODO modifications are never fixture inputs to
+mutate. The only intended child working gitlink change is template adoption. No
+staging, commit, push, real scaffold or application runtime certification occurs here.
+
+## Prompt 1 results (2026-09-16)
+
+The final combined parent run passed **75 tests, 0 failures, 0 skips**:
+13 transformer, 35 scaffold, 8 service-contract, and 19 unchanged workspace tests.
+Expected injected preparation/install/final-verification errors are asserted negative
+cases; they are not normal-suite failures. Concurrency uses explicit synchronization;
+an earlier timing-dependent test was corrected before the final successful run.
+
+Canonical independent mapping observed 120 files, 50 renamed package paths and
+58 files with changed content for the selected SHA. These are observations, not
+permanent count requirements. Python/shell syntax, Make help, active local doc links,
+parent implementation static checks, and git diff whitespace checks passed.
+TODO and real User bytes/deleted-ignore state, User HEAD/master/origin-master and
+parent index were preserved. Template working checkout is canonical; staging its
+new gitlink is deliberately deferred to Prompt 2. No generated runtime certification
+or publication is claimed by these parent test results.
+
+# Historical archive — all records below predate Python policy v2
+
+The following records describe older workspace/.NET implementation and recovery
+work. Their pins, test counts, commands, readiness claims and local-state observations
+are historical, not current instructions. In particular policy-1 recovery is removed
+from the active Python interface. Retained evidence remains untouched.
+
 # Canonical workspace and approved-pin validation
 
 Validated on macOS with Apple Git 2.50.1, Bash 3.2.57, and GNU Make 3.81.
