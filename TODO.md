@@ -1,5 +1,11 @@
 # Team Squared TODO
 
+NOTE: Wes is using to keep track.
+
+WE NEED TO REPLACE .NET!
+  - We need to extract logic into python
+
+## OLD WORK BEFORE FLASK REFACTOR
 - [x] **template-goalstats-service**
   - [x] establish `GoalStats.Template.*` naming
   - [x] use `TemplateDbContext`
@@ -29,6 +35,9 @@
   - [x] test-aligned template pin adopted
   - [x] disposable `GoalStats.User` scaffold certified
   - [x] generated User skeleton passes build / EF / tests / LOCAL / DEV / smoke
+
+
+## TODOS AFTER FLASK REFACTOR
 
 - [ ] **goalstats-user-service**
   - [ ] create `feat/architecture-prototype`
