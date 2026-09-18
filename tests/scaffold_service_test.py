@@ -1,11 +1,12 @@
 import os
-from pathlib import Path
 import subprocess
 import sys
 import time
 import unittest
+from pathlib import Path
 from unittest.mock import patch
-from scaffold_fixtures import Fixture, golden, PAYLOAD
+
+from scaffold_fixtures import IDE_PAYLOAD, PAYLOAD, Fixture, golden
 
 
 class Scaffold(Fixture, unittest.TestCase):
@@ -405,5 +406,44 @@ except RuntimeError:sys.exit(1)
         p.write_text(
             p.read_text() + "goalstats-user-service\t" + self.placeholder + "\tTeam\n"
         )
+        self.commit(self.parent)
+        self.refuse()
+
+
+class IDEScaffold(Fixture, unittest.TestCase):
+    payload = IDE_PAYLOAD
+
+    def test_ide_preview_is_write_free(self):
+        before = self.snap(self.base)
+        result = self.invoke("true")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(before, self.snap(self.base))
+        self.assertIn("PLANNED_FILES=" + str(len(self.payload)), result.stdout)
+        self.assertIn("PYTHON_PACKAGE_DIRECTORY_TRANSFORMATION=NO", result.stdout)
+
+    def test_ide_actual_scaffold_is_exact_and_pins_preserved(self):
+        before = [self.s.snapshot(p) for p in (self.parent, self.src, self.dest)]
+        result = self.invoke()
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.s.verify(self.dest, golden(self.payload), True)
+        self.assertEqual(
+            before, [self.s.snapshot(p) for p in (self.parent, self.src, self.dest)]
+        )
+        self.assertFalse(self.marker.exists())
+
+    def test_machine_ide_payload_refused_before_install(self):
+        path = self.src / ".idea/workspace.xml"
+        path.parent.mkdir()
+        path.write_text("machine-local")
+        self.git(self.src, "add", "-f", str(path))
+        self.commit(self.src)
+        self.commit(self.parent)
+        self.refuse()
+
+    def test_private_host_env_payload_refused_before_install(self):
+        path = self.src / ".env.host.test.private"
+        path.write_text("TEST_REDIS_URL=redis://private/0")
+        self.git(self.src, "add", "-f", str(path))
+        self.commit(self.src)
         self.commit(self.parent)
         self.refuse()

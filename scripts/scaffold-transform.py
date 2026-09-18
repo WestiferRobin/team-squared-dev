@@ -1,7 +1,8 @@
 """Pure flat-src identity policy; evidence v2: committed bytes in, identity-only bytes out. No I/O."""
 
-from pathlib import PurePosixPath
+import json
 import re
+from pathlib import PurePosixPath
 
 POLICY = 2
 CANONICAL_SHA = "720260c7d8d5096bddbd0cc6d6f90f9f311d809a"
@@ -14,6 +15,7 @@ IDENTITY_PATHS = {
         "docker/compose.dev.yml",
         "docs/service/development.md",
         "docs/standard/template.md",
+        "scripts/host_development.py",
         "scripts/smoke/runtime.py",
         "scripts/validation/certify_workflows.py",
         "tests/fixtures/smoke.py",
@@ -26,7 +28,10 @@ IDENTITY_PATHS = {
         "docker/compose.test.yml",
         "docs/service/development.md",
         "docs/standard/template.md",
+        "scripts/host_development.py",
         "scripts/smoke/runtime.py",
+        "scripts/test_ownership.py",
+        "scripts/tests/test_host_development.py",
         "scripts/tests/test_workflow.py",
         "scripts/validation/certify_workflows.py",
         "scripts/workflow.py",
@@ -131,6 +136,8 @@ def validate_path(path):
         and not path.startswith(("/", "-")),
         "Unsafe payload path: " + repr(path),
     )
+    if ".vscode" in path.lower().split("/"):
+        require(path in PORTABLE_IDE_FILES, "Machine-local VS Code payload: " + path)
     for part in path.split("/"):
         low = part.lower()
         require(
@@ -145,6 +152,8 @@ def validate_path(path):
             low
             not in {
                 ".git",
+                ".idea",
+                ".host-sessions",
                 "bin",
                 "obj",
                 "__pycache__",
@@ -196,6 +205,150 @@ def validate_path(path):
         ),
         "Unsupported dependency file: " + path,
     )
+
+
+PORTABLE_IDE_FILES = {
+    ".vscode/launch.json",
+    ".vscode/settings.json",
+    ".vscode/extensions.json",
+}
+
+
+def validate_ide_json(path, data):
+    """Portable JSON only; private environments are referenced, never embedded."""
+    if path not in PORTABLE_IDE_FILES:
+        return
+    try:
+        document = json.loads(data)
+    except (ValueError, UnicodeError):
+        raise Refusal("Invalid portable IDE JSON: " + path) from None
+    require(
+        isinstance(document, dict), "IDE configuration must be a JSON object: " + path
+    )
+
+    def visit(value):
+        if isinstance(value, dict):
+            for key, child in value.items():
+                require(
+                    not re.search(
+                        r"password|secret|token|api.?key", key, re.IGNORECASE
+                    ),
+                    "Credential field in IDE payload: " + path,
+                )
+                if key == "env":
+                    require(
+                        child == {"FLASK_DEBUG": "0"},
+                        "Embedded IDE environment: " + path,
+                    )
+                visit(child)
+        elif isinstance(value, list):
+            for child in value:
+                visit(child)
+        elif isinstance(value, str):
+            normalized = value.replace("\\", "/")
+            require(
+                not normalized.startswith(("/", "~/", "${userHome}", "${env:"))
+                and not normalized.lower().startswith("file:")
+                and not re.match(r"^[A-Za-z]:/", normalized)
+                and ".host-sessions/" not in normalized
+                and not re.search(r"(?:postgresql(?:\+psycopg)?|rediss?)://", value),
+                "Machine-local path or provider URL in IDE payload: " + path,
+            )
+
+    visit(document)
+
+
+def ide_anchors(database="goalstats_template_py", slug="goalstats-template-py"):
+    """Scaffold profile only; optional IDE files do not define business runtime validity."""
+    return {
+        "src/main.py": (
+            b"def development_main()",
+            b'"HOST_APP_PORT", "5300"',
+            b'host="127.0.0.1"',
+            b"use_reloader=False",
+            b"use_debugger=False",
+            b"load_dotenv=False",
+            b'if __name__ == "__main__":',
+        ),
+        ".gitignore": (b".idea/", b".venv/", b".host-sessions/", b".env.*"),
+        ".vscode/launch.json": (
+            b'"type": "debugpy"',
+            b"${workspaceFolder}/src/main.py",
+            b"${workspaceFolder}/.env.host.local",
+            b'"subProcess": false',
+        ),
+        ".vscode/settings.json": (
+            b"${workspaceFolder}/.venv/bin/python",
+            b"tests/unit",
+            b"tests/integration",
+            b'"python.testing.unittestEnabled": false',
+        ),
+        "docker/compose.local.yml": (
+            b"127.0.0.1:${LOCAL_POSTGRES_PORT:-55432}:5432",
+            b"127.0.0.1:${LOCAL_REDIS_PORT:-56379}:6379",
+        ),
+        "make/dev.mk": (b"providers providers-stop",),
+        "make/test.mk": (b"test-providers",),
+        "make/ci.mk": (b"certify-host",),
+        "scripts/workflow.py": (b'command == "test-providers"', b"owned-test.json"),
+        "scripts/host_development.py": (
+            b"def local_providers(",
+            b"def test_providers(",
+            b"verify_host_session(env)",
+            (database + "_local").encode(),
+            (slug + ":local:v1").encode(),
+            (slug + "-test-").encode(),
+            b"fcntl.LOCK_EX",
+            b"stack.stop(volumes=True)",
+        ),
+        "scripts/test_ownership.py": (
+            (slug + "-test-[a-f0-9]{24}").encode(),
+            b"TEST_SESSION_MANIFEST",
+            b"com.docker.compose.project",
+            b"com.docker.compose.service",
+            b"HostIp",
+            b"def verify_test_providers(",
+            b"def verify_host_session(",
+        ),
+        "tests/fixtures/database.py": (b"verify_test_providers()",),
+        "tests/fixtures/redis.py": (b"verify_test_providers()",),
+        "scripts/validation/certify_host.py": (
+            b"def certify_host(",
+            b"certify_session(",
+        ),
+        "README.md": (b"IDE DEVELOPMENT", b"make providers ENV=local"),
+        "docs/service/development.md": (b"PyCharm", b"VS Code", b".env.host.local"),
+        "docs/testing/overview.md": (b"ownership", b"make test-providers"),
+    }
+
+
+def check_ide_contract(payload, values=None):
+    for path, (_, data) in payload.items():
+        validate_ide_json(path, data)
+    enabled = (
+        "scripts/host_development.py" in payload
+        or any(
+            p in payload
+            for p in (
+                ".vscode/launch.json",
+                ".vscode/settings.json",
+                "scripts/test_ownership.py",
+            )
+        )
+        or b"def development_main(" in payload.get("src/main.py", (None, b""))[1]
+    )
+    if not enabled:
+        return  # Published pre-IDE source remains valid until separate pin adoption.
+    expected = (
+        ide_anchors()
+        if values is None
+        else ide_anchors(values["database"], values["slug"])
+    )
+    for path, tokens in expected.items():
+        require(
+            path in payload and all(token in payload[path][1] for token in tokens),
+            "Missing IDE scaffold anchor: " + path,
+        )
 
 
 def collision_check(paths):
@@ -396,6 +549,7 @@ def plan(payload, service, domain):
     values = identity(service, domain)
     collision_check(payload)
     check_anchors(payload)
+    check_ide_contract(payload)
     result, mapping = {}, {}
     for old, (mode, data) in payload.items():
         require(
@@ -431,4 +585,5 @@ def plan(payload, service, domain):
         result[new] = (mode, transformed)
     collision_check(mapping.values())
     check_anchors(result, values)
+    check_ide_contract(result, values)
     return result, mapping

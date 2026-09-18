@@ -1,11 +1,12 @@
 """Disposable real-Git fixtures; canonical bytes are read, never edited."""
 
+import hashlib
 import importlib.util
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHA = "720260c7d8d5096bddbd0cc6d6f90f9f311d809a"
@@ -64,6 +65,8 @@ def golden(payload, stem="user", domain="User"):
 
 
 class Fixture:
+    payload = PAYLOAD
+
     def cmd(self, cwd, *args, ok=True, env=None):
         p = subprocess.run(
             args,
@@ -117,7 +120,7 @@ class Fixture:
         ]:
             self.env.pop(k, None)
         source = self.init("source")
-        for p, (m, d) in PAYLOAD.items():
+        for p, (m, d) in self.payload.items():
             f = source / p
             f.parent.mkdir(parents=True, exist_ok=True)
             f.write_bytes(d)
@@ -197,3 +200,39 @@ class Fixture:
         self.assertNotEqual(p.returncode, 0, p.stdout)
         self.assertEqual(before, self.snap(self.parent))
         return p
+
+
+IDE_DELTA_SHA256 = "1f938ecdf05e5603c11b3a913f02867839fb71e4b593fab3ef4c43550e9840c6"
+
+
+def ide_payload():
+    """Frozen Prompt-1 delta over the approved baseline, never mutable template files."""
+    patch = ROOT / "tests/ide-template-delta.patch"
+    if hashlib.sha256(patch.read_bytes()).hexdigest() != IDE_DELTA_SHA256:
+        raise ValueError(
+            "Certified IDE fixture delta changed; review before updating its digest"
+        )
+    with tempfile.TemporaryDirectory(prefix="ide-payload-") as directory:
+        root = Path(directory)
+        for name, (mode, data) in PAYLOAD.items():
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+            path.chmod(0o755 if mode == "100755" else 0o644)
+        subprocess.run(
+            ["git", "apply", "--no-index", "--unidiff-zero", str(patch)],
+            cwd=root,
+            check=True,
+            capture_output=True,
+        )
+        return {
+            path.relative_to(root).as_posix(): (
+                "100755" if path.stat().st_mode & 0o111 else "100644",
+                path.read_bytes(),
+            )
+            for path in root.rglob("*")
+            if path.is_file()
+        }
+
+
+IDE_PAYLOAD = ide_payload()

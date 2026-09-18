@@ -1,5 +1,6 @@
 import unittest
-from scaffold_fixtures import Fixture, load
+
+from scaffold_fixtures import IDE_PAYLOAD, Fixture, load
 
 
 class ServiceContract(Fixture, unittest.TestCase):
@@ -75,3 +76,17 @@ class ServiceContract(Fixture, unittest.TestCase):
         p = self.dest / "src/main.py"
         p.write_text(p.read_text() + "\nfrom goalstats_user.models import Item\n")
         self.assertEqual(self.classify(), "INVALID")
+
+
+class IDEServiceContract(ServiceContract):
+    payload = IDE_PAYLOAD
+
+    def test_optional_ide_files_do_not_define_business_runtime_validity(self):
+        self.assertEqual(self.invoke().returncode, 0)
+        for path in (
+            ".vscode/extensions.json",
+            ".vscode/launch.json",
+            ".vscode/settings.json",
+        ):
+            (self.dest / path).unlink()
+        self.assertEqual(self.classify(), "SCAFFOLDED")

@@ -155,14 +155,14 @@ disposable ownership regexes, tool containers and CI identities change together.
 Generated cleanup accepts only its own test/cert namespace. Internal
 app/runner/postgres/redis services remain generic.
 
-The approved committed template's complete TRANSFORM inventory is path-scoped in
+The committed baseline and certified IDE delta's TRANSFORM inventory is path-scoped in
 `scripts/scaffold-transform.py:IDENTITY_PATHS`:
 
 | Identity | Exact permitted paths |
 | --- | --- |
-| Database prefix `goalstats_template_py` | `.env.example`; `docker/compose.local.yml`; `docker/compose.dev.yml`; `docs/service/development.md`; `docs/standard/template.md`; `scripts/smoke/runtime.py`; `scripts/validation/certify_workflows.py`; `tests/fixtures/smoke.py` |
+| Database prefix `goalstats_template_py` | `.env.example`; `docker/compose.local.yml`; `docker/compose.dev.yml`; `docs/service/development.md`; `docs/standard/template.md`; `scripts/host_development.py`; `scripts/smoke/runtime.py`; `scripts/validation/certify_workflows.py`; `tests/fixtures/smoke.py` |
 | Logger label `goalstats_template` | `src/main.py`; `docs/standard/template.md` |
-| Runtime `goalstats-template-py` | `.env.example`; `docker/compose.local.yml`; `docker/compose.dev.yml`; `docker/compose.test.yml`; `docs/service/development.md`; `docs/standard/template.md`; `scripts/smoke/runtime.py`; `scripts/tests/test_workflow.py`; `scripts/validation/certify_workflows.py`; `scripts/workflow.py`; `src/settings/base.py`; `tests/fixtures/smoke.py`; `tests/unit/schemas/test_domain.py` |
+| Runtime `goalstats-template-py` | `.env.example`; `docker/compose.local.yml`; `docker/compose.dev.yml`; `docker/compose.test.yml`; `docs/service/development.md`; `docs/standard/template.md`; `scripts/host_development.py`; `scripts/smoke/runtime.py`; `scripts/test_ownership.py`; `scripts/tests/test_host_development.py`; `scripts/tests/test_workflow.py`; `scripts/validation/certify_workflows.py`; `scripts/workflow.py`; `src/settings/base.py`; `tests/fixtures/smoke.py`; `tests/unit/schemas/test_domain.py` |
 | API `GoalStats Template API` | `src/main.py`; `docs/standard/template.md` |
 | Repository `template-goalstats-service` | `docs/standard/template.md` |
 | CI `goalstats-template-${{` | `.github/workflows/ci.yml`; `docs/standard/template.md` |
@@ -344,3 +344,60 @@ Owned repositories develop on master; RoadToTheFinal retains main. Setup/sync ma
 materialize detached approved child pins. Actual Python scaffold attaches only an
 existing matching master, never a new branch. Historical .NET recovery certifications
 are retained in VALIDATION.md; they are not active Python commands or requirements.
+
+
+## IDE development inheritance
+
+The certified template IDE delta is propagated to the existing User service as a
+reviewed identity-adjusted delta. Do not rerun `scaffold-service` over an already
+generated service. The parent transformer supports the same delta for future
+services, once the certified template is published and its pin is adopted separately.
+This change does not update any child gitlink or the approved baseline SHA.
+
+Generated services retain flat `src/` and `main:create_app()`. Direct `src/main.py`
+is LOCAL-only, binds loopback on `HOST_APP_PORT` (5300 by default), constructs the
+factory once, and disables dotenv loading, the Flask debugger and the reloader.
+Use Python 3.12, a repository `.venv`, and the single `requirements.txt`.
+
+Inside a service repository, `make providers ENV=local` starts only PostgreSQL and
+Redis on loopback (defaults 55432/56379), retains LOCAL data, and generates private
+`.env.host.local` from validated service-specific configuration. Build initially,
+then `make migrate ENV=local`; start PyCharm's Python-script configuration or VS
+Code's **Flask: host LOCAL**. Use root cwd, `.venv/bin/python`, `src/` as PyCharm's
+Sources Root, and explicitly load the host env only for the application. Stop the
+IDE process before `make providers-stop ENV=local`. Full Docker workflows remain
+available. See each service's README and `docs/service/development.md`.
+
+Ordinary integration testing remains `make integration`. Optional `make test-providers`
+owns fresh disposable TEST PostgreSQL/Redis, generated credentials, dynamic loopback
+ports, a private env file and ownership manifest, and a foreground lease. Fixtures
+verify that lease and the exact Docker project, container IDs, labels and endpoints
+before destructive database or server-wide Redis tests. Ctrl-C/SIGTERM cleans only
+the owned session. LOCAL/DEV providers are never reused for those tests.
+
+Only `.vscode/launch.json`, `.vscode/settings.json` and optional
+`.vscode/extensions.json` are permitted IDE payloads. JSON must be portable and must
+not embed credentials, provider URLs, absolute machine paths, or generated session
+paths. `.idea/`, `.venv/`, `.host-sessions/`, `.env.host.local`, `.env.host.test.*`, and
+all other real dotenv files remain forbidden payloads; `.env.example` is the sole
+tracked environment source. The implementation uses `.host-sessions/<project>/test.env`
+for private TEST files rather than a `.env.host.test.*` naming convention.
+
+Scaffold validation checks a complete IDE-support profile when the source opts in.
+The existing business-runtime classifier deliberately retains its runtime anchors:
+optional IDE configuration does not determine whether a service can build/run.
+Independent tests cover both the published pre-IDE baseline and the new profile.
+`tests/ide-template-delta.patch` freezes the exact certified Prompt-1 delta over the
+unchanged baseline for reproducible disposable fixtures; tests never consume a mutable
+real template worktree or rerun scaffolding over real User. Remove/rebase that fixture
+only as part of a separately reviewed baseline adoption.
+
+Run parent validation without Docker using Python 3.12:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3.12 -m unittest discover -s tests -p '*test.py'
+```
+
+These tests create Git histories only in disposable fixture repositories. Actual
+IDE breakpoints/discovery, final publication, and child pin adoption remain Prompt 3.
+TODO and unrelated workspace state are outside this change.
