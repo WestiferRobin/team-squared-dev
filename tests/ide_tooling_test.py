@@ -134,3 +134,25 @@ class IDETooling(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             t.plan(data, "goalstats-user-service", "User")
+
+    def test_host_loader_is_service_neutral_and_app_launch_needs_no_env(self):
+        loader = IDE_PAYLOAD["src/settings/host.py"][1]
+        for token in t.TOKENS:
+            self.assertNotIn(token, loader)
+        launch = json.loads(IDE_PAYLOAD[".vscode/launch.json"][1])
+        app = next(c for c in launch["configurations"] if "program" in c)
+        self.assertNotIn("envFile", app)
+        self.assertNotIn("env", app)
+        self.assertIn(
+            "envFile", next(c for c in launch["configurations"] if "module" in c)
+        )
+        for key, value in (
+            ("envFile", "${workspaceFolder}/.env.host.local"),
+            ("env", {"FLASK_DEBUG": "0"}),
+        ):
+            modified = json.loads(json.dumps(launch))
+            modified["configurations"][0][key] = value
+            payload = dict(IDE_PAYLOAD)
+            payload[".vscode/launch.json"] = ("100644", json.dumps(modified).encode())
+            with self.assertRaises(ValueError):
+                t.plan(payload, "goalstats-user-service", "User")

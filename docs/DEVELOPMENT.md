@@ -356,15 +356,15 @@ This change does not update any child gitlink or the approved baseline SHA.
 
 Generated services retain flat `src/` and `main:create_app()`. Direct `src/main.py`
 is LOCAL-only, binds loopback on `HOST_APP_PORT` (5300 by default), constructs the
-factory once, and disables dotenv loading, the Flask debugger and the reloader.
+factory once, and disables generic Flask dotenv loading, the Flask debugger and the reloader.
 Use Python 3.12, a repository `.venv`, and the single `requirements.txt`.
 
 Inside a service repository, `make providers ENV=local` starts only PostgreSQL and
 Redis on loopback (defaults 55432/56379), retains LOCAL data, and generates private
 `.env.host.local` from validated service-specific configuration. Build initially,
 then `make migrate ENV=local`; start PyCharm's Python-script configuration or VS
-Code's **Flask: host LOCAL**. Use root cwd, `.venv/bin/python`, `src/` as PyCharm's
-Sources Root, and explicitly load the host env only for the application. Stop the
+Code's **Flask: host LOCAL**. Select `.venv/bin/python`; Sources Root is optional
+editor assistance. Direct main loads the host file without any IDE env profile. Stop the
 IDE process before `make providers-stop ENV=local`. Full Docker workflows remain
 available. See each service's README and `docs/service/development.md`.
 
@@ -387,7 +387,7 @@ Scaffold validation checks a complete IDE-support profile when the source opts i
 The existing business-runtime classifier deliberately retains its runtime anchors:
 optional IDE configuration does not determine whether a service can build/run.
 Independent tests cover both the published pre-IDE baseline and the new profile.
-`tests/ide-template-delta.patch` freezes the exact certified Prompt-1 delta over the
+`tests/ide-template-delta.patch` freezes the certified IDE delta including direct host loading over the
 unchanged baseline for reproducible disposable fixtures; tests never consume a mutable
 real template worktree or rerun scaffolding over real User. Remove/rebase that fixture
 only as part of a separately reviewed baseline adoption.
@@ -401,3 +401,17 @@ PYTHONDONTWRITEBYTECODE=1 python3.12 -m unittest discover -s tests -p '*test.py'
 These tests create Git histories only in disposable fixture repositories. Actual
 IDE breakpoints/discovery, final publication, and child pin adoption remain Prompt 3.
 TODO and unrelated workspace state are outside this change.
+
+### Zero-friction direct Flask startup
+
+Future services inherit the service-neutral `src/settings/host.py` loader. After
+`make providers ENV=local` and `make migrate ENV=local`, plain `python src/main.py`,
+PyCharm Python-script Run/Debug and VS Code F5 all load the repository's private
+host file without IDE env profiles. Sources Root is editor assistance only. The
+factory, Docker, Alembic and test ownership behavior remain unchanged. An existing
+runtime image must be rebuilt after dependency/migration changes.
+
+Scaffold guards require the shared loader and forbid application-launch envFile/env
+injection. The separate owned TEST debug envFile remains supported. No identity
+replacement rules or package-path transformations change. The frozen IDE payload
+fixture and its digest cover this correction; generated private files remain forbidden.

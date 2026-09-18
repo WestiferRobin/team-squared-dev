@@ -263,18 +263,31 @@ def ide_anchors(database="goalstats_template_py", slug="goalstats-template-py"):
     return {
         "src/main.py": (
             b"def development_main()",
-            b'"HOST_APP_PORT", "5300"',
+            b"config = load_host_config()",
             b'host="127.0.0.1"',
             b"use_reloader=False",
             b"use_debugger=False",
             b"load_dotenv=False",
             b'if __name__ == "__main__":',
         ),
+        "src/settings/host.py": (
+            b"def load_host_config(",
+            b"def read_host_file(",
+            b"os.O_NOFOLLOW",
+            b"os.fstat",
+            b"stat.S_ISREG",
+            b"info.st_uid != os.getuid()",
+            b"info.st_mode & 0o077",
+            b'".env.host.local"',
+            b'"HOST_APP_PORT": "5300"',
+            b"Settings.load(values)",
+            b"def diagnose_providers(",
+            b"def check_app_port(",
+        ),
         ".gitignore": (b".idea/", b".venv/", b".host-sessions/", b".env.*"),
         ".vscode/launch.json": (
             b'"type": "debugpy"',
             b"${workspaceFolder}/src/main.py",
-            b"${workspaceFolder}/.env.host.local",
             b'"subProcess": false',
         ),
         ".vscode/settings.json": (
@@ -323,6 +336,15 @@ def ide_anchors(database="goalstats_template_py", slug="goalstats-template-py"):
 
 
 def check_ide_contract(payload, values=None):
+    if ".vscode/launch.json" in payload:
+        validate_ide_json(".vscode/launch.json", payload[".vscode/launch.json"][1])
+        launch = json.loads(payload[".vscode/launch.json"][1])
+        for config in launch.get("configurations", []):
+            if config.get("program") == "${workspaceFolder}/src/main.py":
+                require(
+                    "envFile" not in config and "env" not in config,
+                    "Direct app launch must use the shared host loader, not IDE environment",
+                )
     for path, (_, data) in payload.items():
         validate_ide_json(path, data)
     enabled = (

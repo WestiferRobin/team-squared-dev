@@ -1,5 +1,5 @@
 diff --git a/.env.example b/.env.example
-index 11513b4..4d958de 100644
+index 11513b4..fe4b0cd 100644
 --- a/.env.example
 +++ b/.env.example
 @@ -2 +2 @@
@@ -13,15 +13,17 @@ index 11513b4..4d958de 100644
 @@ -7 +11,2 @@ APP_PORT=5100
 -# Do not copy these extra keys into the two Compose input files.
 +# Do not copy the app keys below into the Compose input files.
-+# make providers ENV=local generates private .env.host.local for explicit IDE loading.
++# make providers ENV=local generates private .env.host.local for direct src/main.py loading.
 @@ -9 +14 @@ APP_PORT=5100
 -# DATABASE_URL=postgresql+psycopg://service:replace_me@127.0.0.1:5432/goalstats_template_py_local
 +# DATABASE_URL=postgresql+psycopg://goalstats:replace_me@127.0.0.1:55432/goalstats_template_py_local
 @@ -12 +17 @@ APP_PORT=5100
 -# REDIS_URL=redis://127.0.0.1:6379/0
 +# REDIS_URL=redis://127.0.0.1:56379/0
-@@ -14,0 +20 @@ APP_PORT=5100
+@@ -15 +20,2 @@ APP_PORT=5100
+-# The app does not implicitly read dotenv files. Redis is optional for correctness.
 +# FLASK_DEBUG=0
++# The imported factory does not read dotenv files. Redis is optional for correctness.
 diff --git a/.gitignore b/.gitignore
 index e0f7b6b..b1461ba 100644
 --- a/.gitignore
@@ -29,11 +31,86 @@ index e0f7b6b..b1461ba 100644
 @@ -10,0 +11,2 @@ htmlcov/
 +.idea/
 +.host-sessions/
+diff --git a/.vscode/extensions.json b/.vscode/extensions.json
+new file mode 100644
+index 0000000..9c9ac3b
+--- /dev/null
++++ b/.vscode/extensions.json
+@@ -0,0 +1,3 @@
++{
++  "recommendations": ["ms-python.python", "ms-python.debugpy", "ms-python.vscode-pylance"]
++}
+diff --git a/.vscode/launch.json b/.vscode/launch.json
+new file mode 100644
+index 0000000..50e5947
+--- /dev/null
++++ b/.vscode/launch.json
+@@ -0,0 +1,45 @@
++{
++  "version": "0.2.0",
++  "configurations": [
++    {
++      "name": "Flask: host LOCAL",
++      "type": "debugpy",
++      "request": "launch",
++      "program": "${workspaceFolder}/src/main.py",
++      "python": "${workspaceFolder}/.venv/bin/python",
++      "cwd": "${workspaceFolder}",
++      "console": "integratedTerminal",
++      "subProcess": false,
++      "justMyCode": true
++    },
++    {
++      "name": "pytest: owned TEST session",
++      "type": "debugpy",
++      "request": "launch",
++      "module": "pytest",
++      "python": "${workspaceFolder}/.venv/bin/python",
++      "cwd": "${workspaceFolder}",
++      "envFile": "${input:testSessionEnv}",
++      "args": [
++        "${input:testNode}",
++        "-s"
++      ],
++      "console": "integratedTerminal",
++      "subProcess": false,
++      "justMyCode": true
++    }
++  ],
++  "inputs": [
++    {
++      "id": "testSessionEnv",
++      "type": "promptString",
++      "description": "Private env file printed by the running make test-providers owner"
++    },
++    {
++      "id": "testNode",
++      "type": "promptString",
++      "description": "Integration test file or pytest node",
++      "default": "tests/integration/infra/repositories/test_persistence.py"
++    }
++  ]
++}
+diff --git a/.vscode/settings.json b/.vscode/settings.json
+new file mode 100644
+index 0000000..0f91614
+--- /dev/null
++++ b/.vscode/settings.json
+@@ -0,0 +1,9 @@
++{
++  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
++  "python.envFile": "${workspaceFolder}/.env",
++  "python.analysis.extraPaths": ["${workspaceFolder}/src"],
++  "python.testing.pytestEnabled": true,
++  "python.testing.unittestEnabled": false,
++  "python.testing.cwd": "${workspaceFolder}",
++  "python.testing.pytestArgs": ["tests/unit", "tests/integration"]
++}
 diff --git a/README.md b/README.md
-index 13b8d43..aae7e6a 100644
+index 13b8d43..dc39580 100644
 --- a/README.md
 +++ b/README.md
-@@ -78,0 +79,38 @@ is present. See [template anchors and execution paths](docs/standard/template.md
+@@ -78,0 +79,39 @@ is present. See [template anchors and execution paths](docs/standard/template.md
 +
 +## IDE DEVELOPMENT
 +
@@ -47,7 +124,6 @@ index 13b8d43..aae7e6a 100644
 +
 +# providers (no app and no automatic migrations)
 +make providers ENV=local
-+make build ENV=local
 +make migrate ENV=local
 +
 +# then: PyCharm → Run/Debug src/main.py; VS Code → Flask: host LOCAL
@@ -61,12 +137,14 @@ index 13b8d43..aae7e6a 100644
 +make providers-stop ENV=local
 +```
 +
-+In PyCharm select `.venv/bin/python`, mark `src/` as Sources Root, and create a
-+**Python script** configuration for `src/main.py`, working directory repository
-+root, environment file `.env.host.local`, with no parameters. `.idea/` is local
-+and ignored. In VS Code select the workspace `.venv` and **Flask: host LOCAL**.
-+The host server binds `127.0.0.1:5300`; the IDE owns debugging. There is no reloader,
-+built-in debugger, or implicit dotenv loading. The factory remains `main:create_app()`.
++In PyCharm select `.venv/bin/python`, open `src/main.py`, and click Run/Debug.
++No custom environment variables, env-file profile, or Flask configuration is needed.
++Marking `src/` as Sources Root is optional editor assistance, not a runtime requirement.
++In VS Code select the workspace `.venv` and **Flask: host LOCAL** (F5).
++Both IDEs and `python src/main.py` use the same direct-only loader for the repository's
++private `.env.host.local`, independently of working directory. The host server binds
++`127.0.0.1:5300`; the IDE owns debugging. No reloader or built-in debugger is enabled.
++The imported factory remains `main:create_app()` and never loads host configuration.
 +
 +Rebuild after dependency or migration changes, then migrate for new revisions.
 +Host source edits need only an IDE restart; Docker DEV source edits require rebuild.
@@ -81,10 +159,10 @@ index 3f84021..75365cc 100644
 @@ -15,0 +17 @@ services:
 +    ports: ["127.0.0.1:${LOCAL_REDIS_PORT:-56379}:6379"]
 diff --git a/docs/interface/make.md b/docs/interface/make.md
-index 47171f9..9537272 100644
+index 47171f9..259a9f5 100644
 --- a/docs/interface/make.md
 +++ b/docs/interface/make.md
-@@ -54,0 +55,15 @@ successful suites. Commands propagate failures and do not stage, commit, or depl
+@@ -54,0 +55,19 @@ successful suites. Commands propagate failures and do not stage, commit, or depl
 +
 +## IDE DEVELOPMENT commands
 +
@@ -100,11 +178,15 @@ index 47171f9..9537272 100644
 +`ENV=dev`. Normal `integration`, `test`, `migrate`, `smoke`, and `certify` retain their
 +existing workflows. Host certification is additive and allocates its own ports.
 +See the [README workflow](../../README.md#ide-development) for initial IDE setup.
++
++After `providers ENV=local` and `migrate ENV=local`, run/debug `src/main.py` directly:
++it loads the prepared host file without IDE environment configuration. No `make ide`
++command is needed. Rebuild an existing image when dependencies or migrations change.
 diff --git a/docs/service/development.md b/docs/service/development.md
-index 820cea4..b3d8b73 100644
+index 820cea4..1da6f5b 100644
 --- a/docs/service/development.md
 +++ b/docs/service/development.md
-@@ -114,0 +115,51 @@ parent workspace adoption is a separate reviewed change.
+@@ -114,0 +115,68 @@ parent workspace adoption is a separate reviewed change.
 +
 +## IDE DEVELOPMENT
 +
@@ -113,21 +195,22 @@ index 820cea4..b3d8b73 100644
 +then `make setup`. `make providers ENV=local` starts PostgreSQL and Redis only,
 +waits for health, verifies loopback bindings and PostgreSQL authentication, and
 +creates private `.env.host.local`. It reuses the existing LOCAL project and DB volume.
-+It neither migrates nor starts Flask. Next run `make build ENV=local` and
-+`make migrate ENV=local`, then start the IDE configuration.
++It neither migrates nor starts Flask. Next run `make migrate ENV=local`, then
++Run/Debug `src/main.py`. Rebuild an existing image after dependency/migration changes.
 +
 +| Setting | PyCharm | VS Code |
 +| --- | --- | --- |
 +| Interpreter | repo `.venv/bin/python` | workspace `.venv` |
 +| Launch | Python script `src/main.py`, no parameters | `Flask: host LOCAL` (debugpy) |
 +| Working directory | repository root | `${workspaceFolder}` |
-+| App environment file | `.env.host.local` | launch-specific `.env.host.local` |
-+| Import analysis | mark `src/` Sources Root | `python.analysis.extraPaths` |
++| App environment | loaded by direct entrypoint; no IDE profile | same direct entrypoint; no app envFile |
++| Import analysis | optionally mark `src/` Sources Root | `python.analysis.extraPaths` |
 +| Tests | pytest, root working directory, select `tests/unit` or `tests/integration` | Python Test Explorer, same directories |
 +
-+Direct execution requires explicit `APP_ENV=local`, constructs the factory once,
-+and binds `127.0.0.1` on validated `HOST_APP_PORT` (default 5300). It disables
-+reloader, built-in debugger and dotenv loading. IDE breakpoints can therefore target
++Direct execution selects LOCAL automatically, reads the repository `.env.host.local`,
++and constructs the factory once. Explicit DEV/TEST/unknown/blank modes are refused. It
++binds `127.0.0.1` on validated `HOST_APP_PORT` (default 5300). It disables
++reloader, built-in debugger and Flask generic dotenv loading. IDE breakpoints can therefore target
 +`main`, routers, services, repositories and caches in one process. `.idea/` stays
 +ignored. Portable `.vscode` configuration contains no secrets or session paths.
 +
@@ -156,8 +239,24 @@ index 820cea4..b3d8b73 100644
 +a file, or a `path::test_name` node. Do not attach the LOCAL app env file to pytest.
 +Use `make integration` normally; `make test-providers` is optional for individual
 +IDE integration tests and must remain running. See [test ownership](../testing/overview.md).
++
++### Direct startup diagnostics
++
++The direct-only `settings/host.py` helper reads one private, user-owned regular file,
++never follows symlinks, evaluates shell text, discovers other dotenv files, or mutates
++`os.environ`. Supported process overrides win over host-file values and safe LOCAL
++defaults. Invalid overrides and non-loopback provider URLs fail; FLASK_DEBUG cannot
++enable Flask debugging. Missing configuration directs you to `make providers ENV=local`.
++PostgreSQL unavailability refuses startup with a credential-free message. Reachable
++but unmigrated databases allow startup with migration guidance and Unhealthy readiness.
++Redis unavailability retains database fallback and Degraded readiness. Startup never
++migrates or starts Docker. An occupied app port produces an actionable error.
++
++The file path is relative to the repository, not cwd: plain Python script Run works
++from the repository root or `src/`. Imported factory, unit/integration tests, Alembic,
++and Docker never invoke this loader. Do not attach LOCAL host config to pytest.
 diff --git a/docs/service/environment.md b/docs/service/environment.md
-index 868dbf2..244fa10 100644
+index 868dbf2..7837037 100644
 --- a/docs/service/environment.md
 +++ b/docs/service/environment.md
 @@ -5,2 +5,2 @@ ignored `.env.local` and `.env.dev` files with mode 0600 and random passwords;
@@ -165,10 +264,13 @@ index 868dbf2..244fa10 100644
 -are accepted in these Compose input files. They are parsed as data, never sourced.
 +it never overwrites existing configuration. `POSTGRES_PASSWORD` and `APP_PORT`
 +are required; optional host ports are documented below. Files are parsed as data, never sourced.
+@@ -9 +9 @@ Changing a file password does not rotate an existing PostgreSQL volume password.
+-The application does not discover dotenv files. `Settings.load()` uses the process
++The imported factory does not discover dotenv files. `Settings.load()` uses the process
 @@ -23 +23 @@ LOCAL and DEV have distinct Compose projects, database volumes, cache namespaces
 -and loopback HTTP ports. Their provider ports are not published. TEST uses a new
 +and loopback HTTP ports. LOCAL also publishes loopback provider ports; DEV does not. TEST uses a new
-@@ -38,0 +39,25 @@ See [development](development.md) for the exact identity table and recovery rule
+@@ -38,0 +39,33 @@ See [development](development.md) for the exact identity table and recovery rule
 +
 +## Host IDE configuration
 +
@@ -182,8 +284,8 @@ index 868dbf2..244fa10 100644
 +`make providers ENV=local` generates ignored `.env.host.local` (0600) containing
 +`APP_ENV`, host `DATABASE_URL`/`REDIS_URL`, `CACHE_KEY_PREFIX`, `CACHE_TTL_SECONDS`,
 +`LOG_LEVEL`, `OPENAPI_ENABLED`, `HOST_APP_PORT`, and `FLASK_DEBUG=0`. Values derive
-+from the validated LOCAL config and fixed Compose identity. IDE app launches explicitly
-+load it; the application and pytest do not. Identical files are preserved; differing,
++from the validated LOCAL config and fixed Compose identity. Direct `src/main.py`
++loads this exact file for both IDEs; imported factories and pytest do not. Identical files are preserved; differing,
 +nonprivate or symlink files are refused. After verifying a mismatch, explicitly remove
 +the stale file and regenerate. Authentication is checked before generation; no workflow
 +claims that editing config rotates existing volume credentials.
@@ -194,11 +296,19 @@ index 868dbf2..244fa10 100644
 +Closing the owner revokes the session and removes its files/resources. A crash or
 +SIGKILL leaves evidence for exact-project recovery, but the expired lock cannot
 +authorize further tests. Do not publish credentials from Docker inspect output.
++
++Direct execution merges supported process overrides, this host file, then LOCAL defaults.
++Missing process APP_ENV means LOCAL; explicit blank/DEV/TEST/unknown modes fail, and the
++host file must declare LOCAL. Database configuration is required; Redis remains optional.
++Existing settings own cache identity, TTL 300 and INFO defaults; direct OpenAPI defaults
++to enabled and HOST_APP_PORT to 5300. Both provider URLs must use loopback. Invalid
++values fail rather than falling back. FLASK_DEBUG is effectively disabled regardless
++of ambient values. Configuration loading never changes the process environment.
 diff --git a/docs/standard/template.md b/docs/standard/template.md
-index 367782f..9ce579c 100644
+index 367782f..69ffb3a 100644
 --- a/docs/standard/template.md
 +++ b/docs/standard/template.md
-@@ -69,0 +70,32 @@ identities and unrelated-resource sentinels remain intentionally generic.
+@@ -69,0 +70,38 @@ identities and unrelated-resource sentinels remain intentionally generic.
 +
 +## Host development and propagation
 +
@@ -231,11 +341,17 @@ index 367782f..9ce579c 100644
 +scaffold fixture/golden expectations and parent development contract accordingly.
 +After certification/publication authorization, update the parent's canonical template
 +SHA and approved pins in the later prompts. No parent or User changes occur here.
++
++Direct `src/main.py` means LOCAL host development. The service-neutral
++`src/settings/host.py` loader belongs only to that entrypoint; the factory, Docker,
++Alembic and tests remain independent. Portable VS Code app launch must not inject
++an env file; PyCharm Python script Run needs no environment profile. Scaffold guards
++must validate this shared loader and preserve its source bytes without identity rewrites.
 diff --git a/docs/testing/certification.md b/docs/testing/certification.md
-index df37f03..72b318c 100644
+index df37f03..b976745 100644
 --- a/docs/testing/certification.md
 +++ b/docs/testing/certification.md
-@@ -37,0 +38,38 @@ commit, push, or certify a future published SHA.
+@@ -37,0 +38,45 @@ commit, push, or certify a future published SHA.
 +
 +## Automated host certification and manual IDE acceptance
 +
@@ -274,6 +390,13 @@ index df37f03..72b318c 100644
 +actual PyCharm Run/Debug and VS Code F5, verify breakpoints at `main`, router, service,
 +repository and cache, and exercise IDE discovery and individual test selection.
 +Do not report actual IDE debugger/discovery acceptance from CLI tests alone.
++
++Zero-friction startup acceptance uses an exact disposable source copy and its actual
++repository `.env.host.local`; the developer's private file is never replaced. It
++launches bare main with application variables removed, from root and `src/` cwd.
++Unit tests cover private-file parsing, contradictory modes, precedence, loopback,
++provider diagnostics, occupied ports, and factory/import isolation. Actual IDE Run
++must use no env-file profile; command-line acceptance never implies breakpoint acceptance.
 diff --git a/docs/testing/overview.md b/docs/testing/overview.md
 index baf8f67..f964443 100644
 --- a/docs/testing/overview.md
@@ -344,256 +467,6 @@ index 6bceaa2..b8772cb 100644
 -unit integration test smoke:
 +.PHONY: unit integration test smoke test-providers
 +unit integration test smoke test-providers:
-diff --git a/scripts/workflow.py b/scripts/workflow.py
-index 3dc8d56..440dc1c 100644
---- a/scripts/workflow.py
-+++ b/scripts/workflow.py
-@@ -3,0 +4 @@ import argparse
-+import json
-@@ -24,0 +26,4 @@ RUNTIME   make run ENV=local|dev     Start and wait for exactly 200 Healthy
-+IDE       make providers ENV=local  Healthy LOCAL providers + private host env; no app/migration
-+          make providers-stop ENV=local Stop providers only; preserve data
-+          make test-providers        Foreground owned disposable host TEST session
-+          make certify-host PYTHON=.venv/bin/python  Automated host acceptance (no IDE UI)
-@@ -83,4 +88,2 @@ def setup(directory=ROOT):
--    if sys.version_info < (3, 12):  # noqa: UP036 - host prerequisite check
--        raise RuntimeError(
--            "Python 3.12 or newer is required for host orchestration; image uses 3.12"
--        )
-+    if sys.version_info[:2] != (3, 12):
-+        raise RuntimeError("Python 3.12 is required for host orchestration and the application")
-@@ -110,2 +113,13 @@ def read_settings(path):
--            if not sep or key not in {"POSTGRES_PASSWORD", "APP_PORT"}:
--                raise RuntimeError("Environment file permits only POSTGRES_PASSWORD and APP_PORT")
-+            if (
-+                not sep
-+                or key
-+                not in {
-+                    "POSTGRES_PASSWORD",
-+                    "APP_PORT",
-+                    "HOST_APP_PORT",
-+                    "LOCAL_POSTGRES_PORT",
-+                    "LOCAL_REDIS_PORT",
-+                }
-+                or key in values
-+            ):
-+                raise RuntimeError("Environment file contains an unknown or duplicate key")
-@@ -115,2 +129,5 @@ def read_settings(path):
--    if not values.get("APP_PORT", "").isdigit() or not 1 <= int(values["APP_PORT"]) <= 65535:
--        raise RuntimeError("APP_PORT must be a valid port number")
-+    for key in ("APP_PORT", "HOST_APP_PORT", "LOCAL_POSTGRES_PORT", "LOCAL_REDIS_PORT"):
-+        if key == "APP_PORT" or key in values:
-+            port = values.get(key, "")
-+            if not port.isascii() or not port.isdecimal() or not 1 <= int(port) <= 65535:
-+                raise RuntimeError(f"{key} must be a valid port number")
-@@ -134,0 +152,3 @@ class Stack:
-+        # Optional LOCAL settings must never come from ambient shell variables.
-+        for key, default in (("LOCAL_POSTGRES_PORT", "55432"), ("LOCAL_REDIS_PORT", "56379")):
-+            self.process_env[key] = self.settings.get(key, default)
-@@ -156,12 +176,48 @@ class Stack:
--            return self.compose(
--                "run",
--                "--rm",
--                "--no-deps",
--                "-T",
--                "--name",
--                name,
--                *options,
--                self.service,
--                *args,
--                **kwargs,
--            )
-+            with tempfile.TemporaryDirectory() as directory:
-+                compose_options = ()
-+                if self.env == "test":
-+                    receipt = Path(directory) / "owned-test.json"
-+                    receipt.write_text(
-+                        json.dumps(
-+                            {
-+                                "hostname": name,
-+                                "TEST_DATABASE_URL": "postgresql+psycopg://goalstats:"
-+                                + self.settings["POSTGRES_PASSWORD"]
-+                                + "@postgres:5432/goalstats_test_runtime",
-+                                "TEST_REDIS_URL": "redis://redis:6379/0",
-+                            }
-+                        )
-+                    )
-+                    # The enclosing directory is 0700; the non-root runner reads the mount.
-+                    receipt.chmod(0o444)
-+                    override = Path(directory) / "runner.json"
-+                    override.write_text(
-+                        json.dumps(
-+                            {
-+                                "services": {
-+                                    "runner": {
-+                                        "hostname": name,
-+                                        "volumes": [f"{receipt}:/run/owned-test.json:ro"],
-+                                    }
-+                                }
-+                            }
-+                        )
-+                    )
-+                    compose_options = ("-f", override)
-+                return run(
-+                    [
-+                        *self.args,
-+                        *compose_options,
-+                        "run",
-+                        "--rm",
-+                        "--no-deps",
-+                        "-T",
-+                        "--name",
-+                        name,
-+                        *options,
-+                        self.service,
-+                        *args,
-+                    ],
-+                    env=self.process_env,
-+                    **kwargs,
-+                )
-@@ -227 +283,6 @@ def fresh(env):
--        settings={"POSTGRES_PASSWORD": secrets.token_hex(24), "APP_PORT": str(port)},
-+        settings={
-+            "POSTGRES_PASSWORD": secrets.token_hex(24),
-+            "APP_PORT": str(port),
-+            "LOCAL_POSTGRES_PORT": "0",
-+            "LOCAL_REDIS_PORT": "0",
-+        },
-@@ -350,0 +412,10 @@ def main():
-+    elif command in {"providers", "providers-stop"}:
-+        if args.env != "local":
-+            raise RuntimeError("Host providers require ENV=local")
-+        from host_development import local_providers
-+
-+        local_providers(Stack("local"), stop=command == "providers-stop")
-+    elif command == "test-providers":
-+        from host_development import test_providers
-+
-+        test_providers()
-@@ -362,0 +434,4 @@ def main():
-+    elif command == "certify-host":
-+        from validation.certify_host import certify_host
-+
-+        certify_host()
-diff --git a/src/main.py b/src/main.py
-index fecad8a..1752ec0 100644
---- a/src/main.py
-+++ b/src/main.py
-@@ -3,0 +4 @@ import logging
-+import os
-@@ -21 +22 @@ from schemas.infra.problem import ProblemSchema
--from settings.base import Settings
-+from settings.base import ConfigurationError, Settings
-@@ -82,0 +84,22 @@ def create_app(config: Mapping[str, str] | None = None) -> Flask:
-+
-+
-+def development_main() -> None:
-+    """Single-process LOCAL server; the IDE owns environment loading and debugging."""
-+    if os.environ.get("APP_ENV", "").strip().lower() != "local":
-+        raise ConfigurationError("Direct execution requires explicit APP_ENV=local.")
-+    value = os.environ.get("HOST_APP_PORT", "5300")
-+    if not value.isascii() or not value.isdecimal() or not 1 <= int(value) <= 65535:
-+        raise ConfigurationError("HOST_APP_PORT must be an integer from 1 to 65535.")
-+    app = create_app()
-+    app.run(
-+        host="127.0.0.1",
-+        port=int(value),
-+        debug=False,
-+        use_debugger=False,
-+        use_reloader=False,
-+        load_dotenv=False,
-+    )
-+
-+
-+if __name__ == "__main__":
-+    development_main()
-diff --git a/tests/fixtures/database.py b/tests/fixtures/database.py
-index e6462f3..62f3e88 100644
---- a/tests/fixtures/database.py
-+++ b/tests/fixtures/database.py
-@@ -10,0 +11 @@ from sqlalchemy import text
-+from test_ownership import verify_test_providers
-@@ -22,0 +24,4 @@ def postgres_config() -> dict[str, str]:
-+    try:
-+        verify_test_providers()
-+    except RuntimeError as exc:
-+        pytest.fail(str(exc), pytrace=False)
-diff --git a/tests/fixtures/redis.py b/tests/fixtures/redis.py
-index 5b22bb8..eac9217 100644
---- a/tests/fixtures/redis.py
-+++ b/tests/fixtures/redis.py
-@@ -5,0 +6 @@ from redis import Redis
-+from test_ownership import verify_test_providers
-@@ -14,0 +16,4 @@ def redis_url():
-+    try:
-+        verify_test_providers()
-+    except RuntimeError as exc:
-+        pytest.fail(str(exc), pytrace=False)
-diff --git a/.vscode/extensions.json b/.vscode/extensions.json
-new file mode 100644
-index 0000000..9c9ac3b
---- /dev/null
-+++ b/.vscode/extensions.json
-@@ -0,0 +1,3 @@
-+{
-+  "recommendations": ["ms-python.python", "ms-python.debugpy", "ms-python.vscode-pylance"]
-+}
-diff --git a/.vscode/launch.json b/.vscode/launch.json
-new file mode 100644
-index 0000000..e799c99
---- /dev/null
-+++ b/.vscode/launch.json
-@@ -0,0 +1,35 @@
-+{
-+  "version": "0.2.0",
-+  "configurations": [
-+    {
-+      "name": "Flask: host LOCAL",
-+      "type": "debugpy",
-+      "request": "launch",
-+      "program": "${workspaceFolder}/src/main.py",
-+      "python": "${workspaceFolder}/.venv/bin/python",
-+      "cwd": "${workspaceFolder}",
-+      "envFile": "${workspaceFolder}/.env.host.local",
-+      "env": {"FLASK_DEBUG": "0"},
-+      "console": "integratedTerminal",
-+      "subProcess": false,
-+      "justMyCode": true
-+    },
-+    {
-+      "name": "pytest: owned TEST session",
-+      "type": "debugpy",
-+      "request": "launch",
-+      "module": "pytest",
-+      "python": "${workspaceFolder}/.venv/bin/python",
-+      "cwd": "${workspaceFolder}",
-+      "envFile": "${input:testSessionEnv}",
-+      "args": ["${input:testNode}", "-s"],
-+      "console": "integratedTerminal",
-+      "subProcess": false,
-+      "justMyCode": true
-+    }
-+  ],
-+  "inputs": [
-+    {"id": "testSessionEnv", "type": "promptString", "description": "Private env file printed by the running make test-providers owner"},
-+    {"id": "testNode", "type": "promptString", "description": "Integration test file or pytest node", "default": "tests/integration/infra/repositories/test_persistence.py"}
-+  ]
-+}
-diff --git a/.vscode/settings.json b/.vscode/settings.json
-new file mode 100644
-index 0000000..0f91614
---- /dev/null
-+++ b/.vscode/settings.json
-@@ -0,0 +1,9 @@
-+{
-+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-+  "python.envFile": "${workspaceFolder}/.env",
-+  "python.analysis.extraPaths": ["${workspaceFolder}/src"],
-+  "python.testing.pytestEnabled": true,
-+  "python.testing.unittestEnabled": false,
-+  "python.testing.cwd": "${workspaceFolder}",
-+  "python.testing.pytestArgs": ["tests/unit", "tests/integration"]
-+}
 diff --git a/scripts/host_development.py b/scripts/host_development.py
 new file mode 100644
 index 0000000..7404c98
@@ -1286,10 +1159,10 @@ index 0000000..1f03386
 +        ownership.verify_host_session(env)
 diff --git a/scripts/validation/certify_host.py b/scripts/validation/certify_host.py
 new file mode 100644
-index 0000000..770d359
+index 0000000..6cc842f
 --- /dev/null
 +++ b/scripts/validation/certify_host.py
-@@ -0,0 +1,261 @@
+@@ -0,0 +1,345 @@
 +"""Automated host acceptance using disposable resources, never developer LOCAL data.
 +
 +Run with the freshly installed repository .venv Python 3.12 and PYTHONPATH=scripts.
@@ -1298,12 +1171,14 @@ index 0000000..770d359
 +
 +import json
 +import os
++import shutil
 +import signal
 +import socket
 +import subprocess
 +import sys
 +import tempfile
 +import time
++import urllib.error
 +from pathlib import Path
 +
 +from host_development import local_environment, local_providers
@@ -1336,6 +1211,7 @@ index 0000000..770d359
 +        if not k.startswith(
 +            ("TEST_", "DATABASE_", "REDIS_", "APP_", "FLASK_", "CACHE_", "COMPOSE_", "HOST_")
 +        )
++        and k not in {"LOG_LEVEL", "OPENAPI_ENABLED", "PYTHONPATH"}
 +    }
 +
 +
@@ -1410,6 +1286,25 @@ index 0000000..770d359
 +
 +
 +def certify_host():
++    # The real repository's private host file is never overwritten for certification.
++    # Exercise the actual fixed repo-relative path in an exact disposable source copy.
++    with tempfile.TemporaryDirectory(prefix="host-entrypoint-") as directory:
++        root = Path(directory)
++        names = run(["git", "ls-files", "-co", "--exclude-standard", "-z"], capture=True).stdout
++        for name in set(filter(None, names.split("\0"))):
++            source = ROOT / name
++            if source.is_file():
++                target = root / name
++                target.parent.mkdir(parents=True, exist_ok=True)
++                shutil.copy2(source, target)
++        (root / ".venv").symlink_to(ROOT / ".venv", target_is_directory=True)
++        run(
++            [sys.executable, str(root / "scripts/validation/certify_host.py")],
++            env={**clean_env(), "PYTHONPATH": str(root / "scripts")},
++        )
++
++
++def certify_isolated_host():
 +    assert sys.version_info[:2] == (3, 12), "Host certification requires Python 3.12"
 +    assert Path(sys.prefix).resolve() == (ROOT / ".venv").resolve(), "Use repository .venv"
 +    run([sys.executable, "-m", "pip", "check"])
@@ -1436,7 +1331,12 @@ index 0000000..770d359
 +    child = None
 +    try:
 +        with tempfile.TemporaryDirectory() as directory:
-+            path = Path(directory) / ".env.host.local"
++            path = ROOT / ".env.host.local"
++            missing = run(
++                [sys.executable, "src/main.py"], env=clean_env(), capture=True, check=False
++            )
++            assert missing.returncode and "LOCAL host configuration is missing" in missing.stderr
++            assert "Traceback" not in missing.stderr
 +            local_providers(stack, host_path=path)
 +            before = path.read_bytes()
 +            local_providers(stack, host_path=path)
@@ -1480,6 +1380,47 @@ index 0000000..770d359
 +                assert cache.ping()
 +            finally:
 +                cache.close()
++            for mode in ("dev", "test", "", "unknown"):
++                refused = run(
++                    [sys.executable, "src/main.py"],
++                    env={**clean_env(), "APP_ENV": mode},
++                    capture=True,
++                    check=False,
++                )
++                assert refused.returncode and "conflicting APP_ENV" in refused.stderr
++                assert "Traceback" not in refused.stderr
++            url = "http://127.0.0.1:" + env["HOST_APP_PORT"]
++            with socket.socket() as occupied:
++                occupied.bind(("127.0.0.1", int(env["HOST_APP_PORT"])))
++                occupied.listen()
++                refused = run(
++                    [sys.executable, "src/main.py"],
++                    env=clean_env(),
++                    capture=True,
++                    check=False,
++                )
++                assert refused.returncode and "choose HOST_APP_PORT" in refused.stderr
++            # Reachable, unmigrated PostgreSQL must not prevent direct startup.
++            with (Path(directory) / "unmigrated.log").open("w") as output:
++                child = subprocess.Popen(
++                    [sys.executable, "src/main.py"],
++                    cwd=ROOT,
++                    env=clean_env(),
++                    stdout=output,
++                    stderr=subprocess.STDOUT,
++                )
++                deadline = time.monotonic() + 30
++                while True:
++                    try:
++                        assert request(url, "/health")[0] == "Healthy"
++                        break
++                    except (urllib.error.URLError, ConnectionError):
++                        assert child.poll() is None and time.monotonic() < deadline
++                        time.sleep(0.1)
++                assert request(url, "/ready", expected=503)[0] == "Unhealthy"
++                stop_child(child)
++                child = None
++            assert "make migrate ENV=local" in (Path(directory) / "unmigrated.log").read_text()
 +            stack.compose("build", "app")
 +            stack.migrate()
 +            stack.command("alembic", "check")
@@ -1489,7 +1430,7 @@ index 0000000..770d359
 +                child = subprocess.Popen(
 +                    [sys.executable, "src/main.py"],
 +                    cwd=ROOT,
-+                    env=env,
++                    env=clean_env(),
 +                    stdout=output,
 +                    stderr=subprocess.STDOUT,
 +                )
@@ -1507,15 +1448,31 @@ index 0000000..770d359
 +                stop_child(child)
 +                child = None
 +                local_providers(stack, stop=True)
-+                local_providers(stack, host_path=path)
-+                child = subprocess.Popen(
++                refused = run(
 +                    [sys.executable, "src/main.py"],
-+                    cwd=ROOT,
-+                    env=env,
++                    env=clean_env(),
++                    capture=True,
++                    check=False,
++                )
++                assert refused.returncode and "LOCAL PostgreSQL is unavailable" in refused.stderr
++                assert "Traceback" not in refused.stderr and password not in refused.stderr
++                local_providers(stack, host_path=path)
++                stack.compose("stop", "redis")
++                child = subprocess.Popen(
++                    [sys.executable, "main.py"],
++                    cwd=ROOT / "src",
++                    env=clean_env(),
 +                    stdout=output,
 +                    stderr=subprocess.STDOUT,
 +                )
-+                wait_ready(url)
++                deadline = time.monotonic() + 30
++                while True:
++                    try:
++                        assert request(url, "/ready")[0] == "Degraded"
++                        break
++                    except (urllib.error.URLError, ConnectionError):
++                        assert child.poll() is None and time.monotonic() < deadline
++                        time.sleep(0.1)
 +                assert request(url, item_path)[0] == updated
 +                request(url, item_path, "DELETE", expected=204)
 +                request(url, item_path, expected=404)
@@ -1550,38 +1507,162 @@ index 0000000..770d359
 +
 +if __name__ == "__main__":
 +    install_signals()
-+    certify_host()
-diff --git a/tests/unit/test_development_entrypoint.py b/tests/unit/test_development_entrypoint.py
-new file mode 100644
-index 0000000..ee794a9
---- /dev/null
-+++ b/tests/unit/test_development_entrypoint.py
-@@ -0,0 +1,54 @@
-+"""Direct development execution delegates once and never owns the debugger."""
++    certify_isolated_host()
+diff --git a/scripts/workflow.py b/scripts/workflow.py
+index 3dc8d56..440dc1c 100644
+--- a/scripts/workflow.py
++++ b/scripts/workflow.py
+@@ -3,0 +4 @@ import argparse
++import json
+@@ -24,0 +26,4 @@ RUNTIME   make run ENV=local|dev     Start and wait for exactly 200 Healthy
++IDE       make providers ENV=local  Healthy LOCAL providers + private host env; no app/migration
++          make providers-stop ENV=local Stop providers only; preserve data
++          make test-providers        Foreground owned disposable host TEST session
++          make certify-host PYTHON=.venv/bin/python  Automated host acceptance (no IDE UI)
+@@ -83,4 +88,2 @@ def setup(directory=ROOT):
+-    if sys.version_info < (3, 12):  # noqa: UP036 - host prerequisite check
+-        raise RuntimeError(
+-            "Python 3.12 or newer is required for host orchestration; image uses 3.12"
+-        )
++    if sys.version_info[:2] != (3, 12):
++        raise RuntimeError("Python 3.12 is required for host orchestration and the application")
+@@ -110,2 +113,13 @@ def read_settings(path):
+-            if not sep or key not in {"POSTGRES_PASSWORD", "APP_PORT"}:
+-                raise RuntimeError("Environment file permits only POSTGRES_PASSWORD and APP_PORT")
++            if (
++                not sep
++                or key
++                not in {
++                    "POSTGRES_PASSWORD",
++                    "APP_PORT",
++                    "HOST_APP_PORT",
++                    "LOCAL_POSTGRES_PORT",
++                    "LOCAL_REDIS_PORT",
++                }
++                or key in values
++            ):
++                raise RuntimeError("Environment file contains an unknown or duplicate key")
+@@ -115,2 +129,5 @@ def read_settings(path):
+-    if not values.get("APP_PORT", "").isdigit() or not 1 <= int(values["APP_PORT"]) <= 65535:
+-        raise RuntimeError("APP_PORT must be a valid port number")
++    for key in ("APP_PORT", "HOST_APP_PORT", "LOCAL_POSTGRES_PORT", "LOCAL_REDIS_PORT"):
++        if key == "APP_PORT" or key in values:
++            port = values.get(key, "")
++            if not port.isascii() or not port.isdecimal() or not 1 <= int(port) <= 65535:
++                raise RuntimeError(f"{key} must be a valid port number")
+@@ -134,0 +152,3 @@ class Stack:
++        # Optional LOCAL settings must never come from ambient shell variables.
++        for key, default in (("LOCAL_POSTGRES_PORT", "55432"), ("LOCAL_REDIS_PORT", "56379")):
++            self.process_env[key] = self.settings.get(key, default)
+@@ -156,12 +176,48 @@ class Stack:
+-            return self.compose(
+-                "run",
+-                "--rm",
+-                "--no-deps",
+-                "-T",
+-                "--name",
+-                name,
+-                *options,
+-                self.service,
+-                *args,
+-                **kwargs,
+-            )
++            with tempfile.TemporaryDirectory() as directory:
++                compose_options = ()
++                if self.env == "test":
++                    receipt = Path(directory) / "owned-test.json"
++                    receipt.write_text(
++                        json.dumps(
++                            {
++                                "hostname": name,
++                                "TEST_DATABASE_URL": "postgresql+psycopg://goalstats:"
++                                + self.settings["POSTGRES_PASSWORD"]
++                                + "@postgres:5432/goalstats_test_runtime",
++                                "TEST_REDIS_URL": "redis://redis:6379/0",
++                            }
++                        )
++                    )
++                    # The enclosing directory is 0700; the non-root runner reads the mount.
++                    receipt.chmod(0o444)
++                    override = Path(directory) / "runner.json"
++                    override.write_text(
++                        json.dumps(
++                            {
++                                "services": {
++                                    "runner": {
++                                        "hostname": name,
++                                        "volumes": [f"{receipt}:/run/owned-test.json:ro"],
++                                    }
++                                }
++                            }
++                        )
++                    )
++                    compose_options = ("-f", override)
++                return run(
++                    [
++                        *self.args,
++                        *compose_options,
++                        "run",
++                        "--rm",
++                        "--no-deps",
++                        "-T",
++                        "--name",
++                        name,
++                        *options,
++                        self.service,
++                        *args,
++                    ],
++                    env=self.process_env,
++                    **kwargs,
++                )
+@@ -227 +283,6 @@ def fresh(env):
+-        settings={"POSTGRES_PASSWORD": secrets.token_hex(24), "APP_PORT": str(port)},
++        settings={
++            "POSTGRES_PASSWORD": secrets.token_hex(24),
++            "APP_PORT": str(port),
++            "LOCAL_POSTGRES_PORT": "0",
++            "LOCAL_REDIS_PORT": "0",
++        },
+@@ -350,0 +412,10 @@ def main():
++    elif command in {"providers", "providers-stop"}:
++        if args.env != "local":
++            raise RuntimeError("Host providers require ENV=local")
++        from host_development import local_providers
 +
-+from unittest.mock import Mock
++        local_providers(Stack("local"), stop=command == "providers-stop")
++    elif command == "test-providers":
++        from host_development import test_providers
 +
-+import pytest
++        test_providers()
+@@ -362,0 +434,4 @@ def main():
++    elif command == "certify-host":
++        from validation.certify_host import certify_host
 +
-+import main
-+from settings.base import ConfigurationError
++        certify_host()
+diff --git a/src/main.py b/src/main.py
+index fecad8a..3752b81 100644
+--- a/src/main.py
++++ b/src/main.py
+@@ -3,0 +4 @@ import logging
++import sys
+@@ -21 +22 @@ from schemas.infra.problem import ProblemSchema
+-from settings.base import Settings
++from settings.base import ConfigurationError, Settings
+@@ -82,0 +84,26 @@ def create_app(config: Mapping[str, str] | None = None) -> Flask:
 +
 +
-+@pytest.mark.parametrize("port,expected", [(None, 5300), ("54321", 54321)])
-+def test_direct_local_constructs_once_without_reloader_or_dotenv(monkeypatch, port, expected):
-+    monkeypatch.setenv("APP_ENV", "local")
-+    monkeypatch.setenv("FLASK_DEBUG", "1")
-+    if port is None:
-+        monkeypatch.delenv("HOST_APP_PORT", raising=False)
-+    else:
-+        monkeypatch.setenv("HOST_APP_PORT", port)
-+    factory = Mock()
-+    monkeypatch.setattr(main, "create_app", factory)
-+    main.development_main()
-+    factory.assert_called_once_with()
-+    factory.return_value.run.assert_called_once_with(
++def development_main() -> None:
++    """Direct script execution owns LOCAL configuration; the IDE owns debugging."""
++    from settings.host import check_app_port, diagnose_providers, load_host_config
++
++    config = load_host_config()
++    port = int(config["HOST_APP_PORT"])
++    check_app_port(port)
++    app = create_app(config)
++    diagnose_providers(app)
++    app.run(
 +        host="127.0.0.1",
-+        port=expected,
++        port=port,
 +        debug=False,
 +        use_debugger=False,
 +        use_reloader=False,
@@ -1589,25 +1670,394 @@ index 0000000..ee794a9
 +    )
 +
 +
-+@pytest.mark.parametrize("environment", [None, "dev", "test", "production", ""])
-+def test_direct_refuses_nonlocal_before_constructing_app(monkeypatch, environment):
-+    if environment is None:
-+        monkeypatch.delenv("APP_ENV", raising=False)
-+    else:
-+        monkeypatch.setenv("APP_ENV", environment)
++if __name__ == "__main__":
++    try:
++        development_main()
++    except ConfigurationError as exc:
++        sys.exit(str(exc))
+diff --git a/tests/fixtures/database.py b/tests/fixtures/database.py
+index e6462f3..62f3e88 100644
+--- a/tests/fixtures/database.py
++++ b/tests/fixtures/database.py
+@@ -10,0 +11 @@ from sqlalchemy import text
++from test_ownership import verify_test_providers
+@@ -22,0 +24,4 @@ def postgres_config() -> dict[str, str]:
++    try:
++        verify_test_providers()
++    except RuntimeError as exc:
++        pytest.fail(str(exc), pytrace=False)
+diff --git a/tests/fixtures/redis.py b/tests/fixtures/redis.py
+index 5b22bb8..eac9217 100644
+--- a/tests/fixtures/redis.py
++++ b/tests/fixtures/redis.py
+@@ -5,0 +6 @@ from redis import Redis
++from test_ownership import verify_test_providers
+@@ -14,0 +16,4 @@ def redis_url():
++    try:
++        verify_test_providers()
++    except RuntimeError as exc:
++        pytest.fail(str(exc), pytrace=False)
+diff --git a/tests/unit/test_development_entrypoint.py b/tests/unit/test_development_entrypoint.py
+new file mode 100644
+index 0000000..afdc5cd
+--- /dev/null
++++ b/tests/unit/test_development_entrypoint.py
+@@ -0,0 +1,218 @@
++"""Direct-only configuration, diagnostics, and single-process execution."""
++
++import importlib
++import os
++from unittest.mock import MagicMock, Mock
++
++import pytest
++from sqlalchemy.exc import OperationalError
++
++import main
++from settings import host
++from settings.base import ConfigurationError
++
++
++@pytest.fixture
++def host_file(tmp_path, monkeypatch):
++    path = tmp_path / ".env.host.local"
++    path.write_text(
++        "APP_ENV=local\nDATABASE_URL=postgresql+psycopg://u:secret@127.0.0.1:55432/db\n"
++        "REDIS_URL=redis://127.0.0.1:56379/0\n"
++    )
++    path.chmod(0o600)
++    monkeypatch.setattr(host, "HOST_FILE", path)
++    for key in host.KEYS:
++        monkeypatch.delenv(key, raising=False)
++    return path
++
++
++@pytest.mark.parametrize("mode", [None, "local"])
++def test_direct_local_constructs_once_without_reloader_or_dotenv(host_file, monkeypatch, mode):
++    if mode is not None:
++        monkeypatch.setenv("APP_ENV", mode)
++    monkeypatch.setenv("FLASK_DEBUG", "1")
++    before = dict(os.environ)
 +    factory = Mock()
++    diagnostics = Mock()
 +    monkeypatch.setattr(main, "create_app", factory)
++    monkeypatch.setattr(host, "diagnose_providers", diagnostics)
++    monkeypatch.setattr(host, "check_app_port", Mock())
++    main.development_main()
++    factory.assert_called_once()
++    values = factory.call_args.args[0]
++    assert values["APP_ENV"] == "local" and values["FLASK_DEBUG"] == "0"
++    assert values["DATABASE_URL"].endswith(":55432/db")
++    diagnostics.assert_called_once_with(factory.return_value)
++    factory.return_value.run.assert_called_once_with(
++        host="127.0.0.1",
++        port=5300,
++        debug=False,
++        use_debugger=False,
++        use_reloader=False,
++        load_dotenv=False,
++    )
++    assert dict(os.environ) == before
++
++
++@pytest.mark.parametrize("mode", ["dev", "test", "production", "", " "])
++def test_direct_refuses_nonlocal_before_reading_file(host_file, monkeypatch, mode):
++    read = Mock(side_effect=AssertionError("must not read"))
++    monkeypatch.setattr(host, "read_host_file", read)
 +    with pytest.raises(ConfigurationError, match="APP_ENV"):
-+        main.development_main()
-+    factory.assert_not_called()
++        host.load_host_config({"APP_ENV": mode})
++    read.assert_not_called()
 +
 +
-+@pytest.mark.parametrize("port", ["0", "65536", "-1", "abc", "", "53.0", " 5300", "５３００"])
-+def test_direct_refuses_invalid_port_before_construction(monkeypatch, port):
-+    monkeypatch.setenv("APP_ENV", "local")
-+    monkeypatch.setenv("HOST_APP_PORT", port)
-+    factory = Mock()
-+    monkeypatch.setattr(main, "create_app", factory)
-+    with pytest.raises(ConfigurationError, match="HOST_APP_PORT"):
-+        main.development_main()
-+    factory.assert_not_called()
++@pytest.mark.parametrize("cwd", ["root", "src"])
++def test_file_location_does_not_depend_on_cwd(host_file, tmp_path, monkeypatch, cwd):
++    directory = tmp_path / cwd
++    directory.mkdir()
++    (directory / ".env.host.local").write_text("must not load cwd file")
++    monkeypatch.chdir(directory)
++    assert host.load_host_config({})["APP_ENV"] == "local"
++
++
++def test_missing_file_is_actionable(host_file):
++    host_file.unlink()
++    with pytest.raises(ConfigurationError, match="Run make providers ENV=local"):
++        host.load_host_config({})
++
++
++@pytest.mark.parametrize(
++    "content",
++    [
++        "APP_ENV=local\nBROKEN",
++        "APP_ENV=local\nAPP_ENV=local",
++        "APP_ENV=local\nUNKNOWN=secret",
++        "APP_ENV=dev",
++        "APP_ENV=test",
++        "APP_ENV=",
++        "DATABASE_URL=secret",
++        "APP_ENV=local\nLOG_LEVEL=I\x00NFO",
++    ],
++)
++def test_bad_host_file_refused_without_values(host_file, content):
++    host_file.write_text(content)
++    with pytest.raises(ConfigurationError) as exc:
++        host.load_host_config({"APP_ENV": "local"})
++    assert "secret" not in str(exc.value)
++
++
++def test_file_symlink_and_permissions_refused(host_file, tmp_path, monkeypatch):
++    link = tmp_path / "link"
++    link.symlink_to(host_file)
++    with pytest.raises(ConfigurationError, match="symlinks"):
++        host.read_host_file(link)
++    host_file.chmod(0o644)
++    with pytest.raises(ConfigurationError, match="private"):
++        host.read_host_file(host_file)
++    host_file.chmod(0o600)
++    monkeypatch.setattr(host.os, "getuid", lambda: host_file.stat().st_uid + 1)
++    with pytest.raises(ConfigurationError, match="owned"):
++        host.read_host_file(host_file)
++
++
++def test_nonregular_file_refused(tmp_path):
++    fifo = tmp_path / "fifo"
++    os.mkfifo(fifo, 0o600)
++    with pytest.raises(ConfigurationError, match="regular"):
++        host.read_host_file(fifo)
++
++
++def test_literal_values_are_not_evaluated_or_interpolated(host_file):
++    with host_file.open("a") as stream:
++        stream.write("CACHE_KEY_PREFIX=${HOME}\n")
++    assert host.read_host_file(host_file)["CACHE_KEY_PREFIX"] == "${HOME}"
++    with pytest.raises(ConfigurationError, match="CACHE_KEY_PREFIX"):
++        host.load_host_config({})
++
++
++def test_precedence_defaults_and_optional_redis(host_file):
++    with host_file.open("a") as stream:
++        stream.write("HOST_APP_PORT=5400\nLOG_LEVEL=WARNING\n")
++    config = host.load_host_config({"HOST_APP_PORT": "5500", "REDIS_URL": "", "LOG_LEVEL": "DEBUG"})
++    assert config["HOST_APP_PORT"] == "5500"
++    assert config["OPENAPI_ENABLED"] == "true"
++    assert config["LOG_LEVEL"] == "DEBUG"
++    assert config["REDIS_URL"] == ""
++    assert "CACHE_KEY_PREFIX" not in config  # Existing Settings owns identity/defaults.
++
++
++@pytest.mark.parametrize(
++    "key,value",
++    [
++        ("DATABASE_URL", ""),
++        ("DATABASE_URL", "secret"),
++        ("DATABASE_URL", "postgresql://u:secret@remote/db"),
++        ("REDIS_URL", "secret"),
++        ("REDIS_URL", "redis://remote/0"),
++        ("CACHE_KEY_PREFIX", "?"),
++        ("CACHE_TTL_SECONDS", "0"),
++        ("OPENAPI_ENABLED", "maybe"),
++        ("LOG_LEVEL", "secret"),
++        *[("HOST_APP_PORT", v) for v in ("0", "65536", "-1", "", "５３００", "abc")],
++    ],
++)
++def test_invalid_override_refused(host_file, key, value):
++    with pytest.raises(ConfigurationError) as exc:
++        host.load_host_config({key: value})
++    assert "secret" not in str(exc.value)
++
++
++def test_missing_database_refused(host_file):
++    host_file.write_text("APP_ENV=local\n")
++    with pytest.raises(ConfigurationError, match="DATABASE_URL"):
++        host.load_host_config({})
++
++
++def test_occupied_app_port_is_actionable(monkeypatch):
++    socket = MagicMock()
++    socket.return_value.__enter__.return_value.bind.side_effect = OSError("occupied")
++    monkeypatch.setattr(host.socket, "socket", socket)
++    with pytest.raises(ConfigurationError, match="choose HOST_APP_PORT"):
++        host.check_app_port(5300)
++
++
++@pytest.fixture
++def diagnostic_app():
++    db, cache, settings = Mock(), Mock(), Mock(cache_key_prefix="unit")
++    app = Mock(
++        extensions={
++            "goalstats_database": db,
++            "goalstats_cache": cache,
++            "goalstats_settings": settings,
++        }
++    )
++    return app, db, cache
++
++
++def test_postgres_unavailable_is_redacted(diagnostic_app):
++    app, db, _ = diagnostic_app
++    db.engine.connect.side_effect = OperationalError("secret", {}, Exception("password"))
++    with pytest.raises(ConfigurationError, match="LOCAL PostgreSQL is unavailable") as exc:
++        host.diagnose_providers(app)
++    assert "secret" not in str(exc.value) and "password" not in str(exc.value)
++    db.dispose.assert_called_once()
++
++
++def test_unmigrated_database_and_redis_outage_only_warn(diagnostic_app, monkeypatch):
++    app, db, cache = diagnostic_app
++    db.engine.connect.return_value.__enter__ = Mock()
++    db.engine.connect.return_value.__exit__ = Mock(return_value=False)
++    monkeypatch.setattr(host, "is_ready", lambda _: False)
++    cache.ready.return_value = False
++    host.diagnose_providers(app)
++    messages = [call.args[0] for call in app.logger.warning.call_args_list]
++    assert any("make migrate ENV=local" in m for m in messages)
++    assert any("database fallback" in m for m in messages)
++
++
++def test_import_and_factory_never_read_host_file(monkeypatch):
++    reader = Mock(side_effect=AssertionError("host file accessed"))
++    monkeypatch.setattr(host, "read_host_file", reader)
++    importlib.reload(main)
++    before = dict(os.environ)
++    app = main.create_app({"APP_ENV": "test", "DATABASE_URL": "postgresql://u:p@localhost/unit"})
++    app.extensions["goalstats_database"].dispose()
++    reader.assert_not_called()
++    assert dict(os.environ) == before
+diff --git a/src/settings/host.py b/src/settings/host.py
+new file mode 100644
+index 0000000..f67e7da
+--- /dev/null
++++ b/src/settings/host.py
+@@ -0,0 +1,134 @@
++"""Explicit direct-script LOCAL configuration; never used by the general factory."""
++
++import ipaddress
++import os
++import socket
++import stat
++from collections.abc import Mapping
++from pathlib import Path
++from typing import cast
++from urllib.parse import urlsplit
++
++from flask import Flask
++from sqlalchemy import text
++from sqlalchemy.exc import SQLAlchemyError
++
++from infra.resources.db import Database, is_ready
++from infra.resources.redis import RedisCache
++from settings.base import ConfigurationError, Settings
++
++HOST_FILE = Path(__file__).resolve().parents[2] / ".env.host.local"
++KEYS = frozenset(
++    {
++        "APP_ENV",
++        "DATABASE_URL",
++        "REDIS_URL",
++        "CACHE_KEY_PREFIX",
++        "CACHE_TTL_SECONDS",
++        "LOG_LEVEL",
++        "OPENAPI_ENABLED",
++        "HOST_APP_PORT",
++        "FLASK_DEBUG",
++    }
++)
++
++
++def read_host_file(path: Path) -> dict[str, str]:
++    """Read the generated literal KEY=value format without following symlinks."""
++    try:
++        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
++        with os.fdopen(fd, encoding="utf-8") as stream:
++            info = os.fstat(stream.fileno())
++            if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
++                raise ConfigurationError(
++                    "LOCAL host configuration must be a private regular file owned by this user."
++                )
++            content = stream.read()
++    except FileNotFoundError:
++        raise ConfigurationError(
++            "LOCAL host configuration is missing. Run make providers ENV=local."
++        ) from None
++    except (OSError, UnicodeError):
++        raise ConfigurationError(
++            "Cannot read private LOCAL host configuration; symlinks are not allowed."
++        ) from None
++    values: dict[str, str] = {}
++    for line in content.splitlines():
++        if not line or line.startswith("#"):
++            continue
++        key, separator, value = line.partition("=")
++        if not separator or key not in KEYS or key in values or "\x00" in value:
++            raise ConfigurationError(
++                "Invalid LOCAL host configuration: use unique supported KEY=value lines."
++            )
++        values[key] = value
++    if values.get("APP_ENV", "").strip().lower() != "local":
++        raise ConfigurationError("LOCAL host configuration must specify APP_ENV=local.")
++    return values
++
++
++def loopback(host: str | None) -> bool:
++    if host == "localhost":
++        return True
++    try:
++        return ipaddress.ip_address(host or "").is_loopback
++    except ValueError:
++        return False
++
++
++def load_host_config(environ: Mapping[str, str] | None = None) -> dict[str, str]:
++    source = os.environ if environ is None else environ
++    if "APP_ENV" in source and source["APP_ENV"].strip().lower() != "local":
++        raise ConfigurationError(
++            "Direct src/main.py execution supports LOCAL only. "
++            "Remove the conflicting APP_ENV setting."
++        )
++    values = {"APP_ENV": "local", "OPENAPI_ENABLED": "true", "HOST_APP_PORT": "5300"}
++    values.update(read_host_file(HOST_FILE))
++    values.update({key: source[key] for key in KEYS if key in source})
++    values.update(APP_ENV="local", FLASK_DEBUG="0")
++    settings = Settings.load(values)
++    if not loopback(settings.database_url.host):
++        raise ConfigurationError("DATABASE_URL for LOCAL host development must use loopback.")
++    if settings.redis_url and not loopback(urlsplit(settings.redis_url).hostname):
++        raise ConfigurationError("REDIS_URL for LOCAL host development must use loopback.")
++    port = values["HOST_APP_PORT"]
++    if not port.isascii() or not port.isdecimal() or not 1 <= int(port) <= 65535:
++        raise ConfigurationError("HOST_APP_PORT must be an integer from 1 to 65535.")
++    return values
++
++
++def check_app_port(port: int) -> None:
++    with socket.socket() as probe:
++        try:
++            probe.bind(("127.0.0.1", port))
++        except OSError:
++            raise ConfigurationError(
++                f"LOCAL application port {port} is unavailable. Stop the other application "
++                "or choose HOST_APP_PORT."
++            ) from None
++
++
++def diagnose_providers(app: Flask) -> None:
++    """Bounded reads only. Schema readiness and cache fallback retain their policies."""
++    database = cast(Database, app.extensions["goalstats_database"])
++    cache = cast(RedisCache, app.extensions["goalstats_cache"])
++    settings = cast(Settings, app.extensions["goalstats_settings"])
++    try:
++        with database.engine.connect() as connection:
++            connection.execute(text("SELECT 1"))
++    except SQLAlchemyError:
++        database.dispose()
++        raise ConfigurationError(
++            "LOCAL PostgreSQL is unavailable. Run make providers ENV=local "
++            "and verify the existing configuration."
++        ) from None
++    if not is_ready(database):
++        app.logger.warning(
++            "LOCAL database is not ready. If migrations are pending, run make migrate ENV=local."
++        )
++    if not cache.ready(settings.cache_key_prefix):
++        app.logger.warning(
++            "LOCAL Redis is unavailable; database fallback remains active. "
++            "Run make providers ENV=local."
++        )

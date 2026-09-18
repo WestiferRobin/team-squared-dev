@@ -202,7 +202,7 @@ class Fixture:
         return p
 
 
-IDE_DELTA_SHA256 = "1f938ecdf05e5603c11b3a913f02867839fb71e4b593fab3ef4c43550e9840c6"
+IDE_DELTA_SHA256 = "8641f4e0c7e6cab78e11650470ff024b712ca5072588800e97fc1f404a99764b"
 
 
 def ide_payload():
