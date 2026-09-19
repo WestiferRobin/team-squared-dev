@@ -44,7 +44,7 @@ class Workspace(unittest.TestCase):
         self.pin = self.git(self.child, 'rev-parse', 'HEAD')
         self.parent = self.init('parent')
         for name in ['Makefile', 'scripts/workspace.sh', 'scripts/git-safety.sh', 'scripts/box.sh', 'config/components.tsv',
-                     'infra/.env.local.example', 'infra/.env.dev.example', '.gitignore']:
+                     'scripts/infra-config.sh', '.gitignore']:
             dest = self.parent / name
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(SOURCE / name, dest)
@@ -81,9 +81,9 @@ class Workspace(unittest.TestCase):
         self.assertEqual(self.pin, self.git(self.work / 'children/one', 'rev-parse', 'HEAD'))
         self.git(self.work / 'children/one', 'switch', '-c', 'child-feature')
         envfile = self.work / 'infra/.env.local'
-        envfile.write_bytes(b'private\x00bytes\n')
+        envfile.write_bytes(b'LOCAL_FRONTEND_PORT=33100\nDEV_FRONTEND_PORT=33101\n')
         self.make('setup')
-        self.assertEqual(envfile.read_bytes(), b'private\x00bytes\n')
+        self.assertEqual(envfile.read_bytes(), b'LOCAL_FRONTEND_PORT=33100\nDEV_FRONTEND_PORT=33101\n')
         self.assertEqual(self.before, self.git(self.work, 'rev-parse', 'HEAD'))
         self.assertEqual('child-feature', self.git(self.work / 'children/one', 'branch', '--show-current'))
         self.git(self.work, 'checkout', '--detach')

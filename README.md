@@ -28,7 +28,7 @@ make sync
 ```
 
 Setup prepares the **current** parent commit, initializes all five children at exact
-pins, and creates only missing parent LOCAL/DEV env files. It never pulls the parent.
+pins, and prepares the private parent infra/.env.local machine configuration. It never pulls the parent.
 Sync fast-forwards parent master and adopts only its approved child pins; it never
 changes env files. Both preserve developer work by refusing dirty or off-pin state.
 Owned repositories use master only; RoadToTheFinal retains its main exception.

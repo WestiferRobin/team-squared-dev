@@ -1,39 +1,40 @@
 diff --git a/.env.example b/.env.example
-index 11513b4..fe4b0cd 100644
+deleted file mode 100644
 --- a/.env.example
-+++ b/.env.example
-@@ -2 +2 @@
++++ /dev/null
+@@ -1,15 +0,0 @@
+-# EXAMPLE ONLY. make setup generates private .env.local/.env.dev without overwriting.
 -# Those Compose input files accept ONLY these two keys (safe placeholder below):
-+# Required Compose inputs (safe placeholder below):
-@@ -4,0 +5,4 @@ APP_PORT=5100
-+# Optional LOCAL host ports (defaults shown; all app/provider ports must differ):
-+# HOST_APP_PORT=5300
-+# LOCAL_POSTGRES_PORT=55432
-+# LOCAL_REDIS_PORT=56379
-@@ -7 +11,2 @@ APP_PORT=5100
+-POSTGRES_PASSWORD=replace_with_random_url_safe_password
+-APP_PORT=5100
+-
+-# Direct app deployments: configure these explicitly in the process environment.
 -# Do not copy these extra keys into the two Compose input files.
-+# Do not copy the app keys below into the Compose input files.
-+# make providers ENV=local generates private .env.host.local for direct src/main.py loading.
-@@ -9 +14 @@ APP_PORT=5100
+-# APP_ENV=local
 -# DATABASE_URL=postgresql+psycopg://service:replace_me@127.0.0.1:5432/goalstats_template_py_local
-+# DATABASE_URL=postgresql+psycopg://goalstats:replace_me@127.0.0.1:55432/goalstats_template_py_local
-@@ -12 +17 @@ APP_PORT=5100
+-# LOG_LEVEL=INFO
+-# OPENAPI_ENABLED=true
 -# REDIS_URL=redis://127.0.0.1:6379/0
-+# REDIS_URL=redis://127.0.0.1:56379/0
-@@ -15 +20,2 @@ APP_PORT=5100
+-# CACHE_KEY_PREFIX=goalstats-template-py:local:v1
+-# CACHE_TTL_SECONDS=300
 -# The app does not implicitly read dotenv files. Redis is optional for correctness.
-+# FLASK_DEBUG=0
-+# The imported factory does not read dotenv files. Redis is optional for correctness.
 diff --git a/.gitignore b/.gitignore
-index e0f7b6b..b1461ba 100644
 --- a/.gitignore
 +++ b/.gitignore
-@@ -10,0 +11,2 @@ htmlcov/
+@@ -10,0 +11,2 @@
 +.idea/
 +.host-sessions/
+@@ -13,2 +15,6 @@
+-.env.*
+-!.env.example
++.env.local
++.env.test
++.env.dev
++.env.host.local
++.env.host.test.*
++.env.prod
 diff --git a/.vscode/extensions.json b/.vscode/extensions.json
 new file mode 100644
-index 0000000..9c9ac3b
 --- /dev/null
 +++ b/.vscode/extensions.json
 @@ -0,0 +1,3 @@
@@ -42,10 +43,9 @@ index 0000000..9c9ac3b
 +}
 diff --git a/.vscode/launch.json b/.vscode/launch.json
 new file mode 100644
-index 0000000..50e5947
 --- /dev/null
 +++ b/.vscode/launch.json
-@@ -0,0 +1,45 @@
+@@ -0,0 +1,39 @@
 +{
 +  "version": "0.2.0",
 +  "configurations": [
@@ -67,7 +67,6 @@ index 0000000..50e5947
 +      "module": "pytest",
 +      "python": "${workspaceFolder}/.venv/bin/python",
 +      "cwd": "${workspaceFolder}",
-+      "envFile": "${input:testSessionEnv}",
 +      "args": [
 +        "${input:testNode}",
 +        "-s"
@@ -79,11 +78,6 @@ index 0000000..50e5947
 +  ],
 +  "inputs": [
 +    {
-+      "id": "testSessionEnv",
-+      "type": "promptString",
-+      "description": "Private env file printed by the running make test-providers owner"
-+    },
-+    {
 +      "id": "testNode",
 +      "type": "promptString",
 +      "description": "Integration test file or pytest node",
@@ -93,24 +87,36 @@ index 0000000..50e5947
 +}
 diff --git a/.vscode/settings.json b/.vscode/settings.json
 new file mode 100644
-index 0000000..0f91614
 --- /dev/null
 +++ b/.vscode/settings.json
-@@ -0,0 +1,9 @@
+@@ -0,0 +1,14 @@
 +{
 +  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-+  "python.envFile": "${workspaceFolder}/.env",
-+  "python.analysis.extraPaths": ["${workspaceFolder}/src"],
++  "python.envFile": "",
++  "python.analysis.extraPaths": [
++    "${workspaceFolder}/src"
++  ],
 +  "python.testing.pytestEnabled": true,
 +  "python.testing.unittestEnabled": false,
 +  "python.testing.cwd": "${workspaceFolder}",
-+  "python.testing.pytestArgs": ["tests/unit", "tests/integration"]
++  "python.testing.pytestArgs": [
++    "tests/unit",
++    "tests/integration"
++  ]
 +}
+diff --git a/Makefile b/Makefile
+--- a/Makefile
++++ b/Makefile
+@@ -3 +3 @@
+-PYTHON ?= python3
++PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3.12)
 diff --git a/README.md b/README.md
-index 13b8d43..dc39580 100644
 --- a/README.md
 +++ b/README.md
-@@ -78,0 +79,39 @@ is present. See [template anchors and execution paths](docs/standard/template.md
+@@ -17 +17 @@
+-Setup creates only missing private `.env.local`/`.env.dev` files and preserves
++Setup creates private `.env.local`/`.env.test` files and preserves
+@@ -78,0 +79,39 @@
 +
 +## IDE DEVELOPMENT
 +
@@ -142,7 +148,7 @@ index 13b8d43..dc39580 100644
 +Marking `src/` as Sources Root is optional editor assistance, not a runtime requirement.
 +In VS Code select the workspace `.venv` and **Flask: host LOCAL** (F5).
 +Both IDEs and `python src/main.py` use the same direct-only loader for the repository's
-+private `.env.host.local`, independently of working directory. The host server binds
++private `.env.local`, independently of working directory. The host server binds
 +`127.0.0.1:5300`; the IDE owns debugging. No reloader or built-in debugger is enabled.
 +The imported factory remains `main:create_app()` and never loads host configuration.
 +
@@ -150,27 +156,52 @@ index 13b8d43..dc39580 100644
 +Host source edits need only an IDE restart; Docker DEV source edits require rebuild.
 +Reinstall requirements after dependency changes. See [IDE setup and safety](docs/service/development.md#ide-development)
 +and [owned integration debugging](docs/testing/overview.md#ide-integration-debugging).
+diff --git a/docker/compose.dev.yml b/docker/compose.dev.yml
+--- a/docker/compose.dev.yml
++++ b/docker/compose.dev.yml
+@@ -36,2 +36,3 @@
+-      OPENAPI_ENABLED: "true"
+-      LOG_LEVEL: INFO
++      OPENAPI_ENABLED: ${OPENAPI_ENABLED:-true}
++      LOG_LEVEL: ${LOG_LEVEL:-INFO}
++      CACHE_TTL_SECONDS: ${CACHE_TTL_SECONDS:-300}
 diff --git a/docker/compose.local.yml b/docker/compose.local.yml
-index 3f84021..75365cc 100644
 --- a/docker/compose.local.yml
 +++ b/docker/compose.local.yml
-@@ -3,0 +4 @@ services:
+@@ -3,0 +4 @@
 +    ports: ["127.0.0.1:${LOCAL_POSTGRES_PORT:-55432}:5432"]
-@@ -15,0 +17 @@ services:
+@@ -15,0 +17 @@
 +    ports: ["127.0.0.1:${LOCAL_REDIS_PORT:-56379}:6379"]
+@@ -36,2 +38,3 @@
+-      OPENAPI_ENABLED: "true"
+-      LOG_LEVEL: INFO
++      OPENAPI_ENABLED: ${OPENAPI_ENABLED:-true}
++      LOG_LEVEL: ${LOG_LEVEL:-INFO}
++      CACHE_TTL_SECONDS: ${CACHE_TTL_SECONDS:-300}
+diff --git a/docker/compose.test.yml b/docker/compose.test.yml
+--- a/docker/compose.test.yml
++++ b/docker/compose.test.yml
+@@ -36,2 +36,3 @@
+-      OPENAPI_ENABLED: "true"
+-      LOG_LEVEL: INFO
++      OPENAPI_ENABLED: ${OPENAPI_ENABLED:-true}
++      LOG_LEVEL: ${LOG_LEVEL:-INFO}
++      CACHE_TTL_SECONDS: ${CACHE_TTL_SECONDS:-300}
 diff --git a/docs/interface/make.md b/docs/interface/make.md
-index 47171f9..259a9f5 100644
 --- a/docs/interface/make.md
 +++ b/docs/interface/make.md
-@@ -54,0 +55,19 @@ successful suites. Commands propagate failures and do not stage, commit, or depl
+@@ -37 +37 @@
+-`setup` preserves existing files. `doctor` only diagnoses. `run` requires an already
++`setup` creates `.env.local` and `.env.test`, preserves valid canonical files, and safely migrates legacy configuration. `doctor` only diagnoses. `run` requires an already
+@@ -54,0 +55,19 @@
 +
 +## IDE DEVELOPMENT commands
 +
 +| Command | Behavior |
 +| --- | --- |
-+| `providers ENV=local` | Start only healthy LOCAL PostgreSQL/Redis; verify bindings/auth; generate private host env; no app/migration |
++| `providers ENV=local` | Start only healthy LOCAL PostgreSQL/Redis; verify bindings/auth; use canonical machine config; no app/migration |
 +| `providers-stop ENV=local` | Stop only providers; retain PostgreSQL volume, containers and network; refuse active full LOCAL app |
-+| `test-providers` | Foreground isolated disposable TEST session, dynamic loopback endpoints, private env + ownership manifest; Ctrl-C/SIGTERM cleanup |
++| `test-providers` | Foreground isolated disposable TEST session, dynamic loopback endpoints, private ownership manifest; Ctrl-C/SIGTERM cleanup |
 +| `certify-host PYTHON=.venv/bin/python` | Python 3.12 host acceptance after installing requirements; disposable providers, CRUD/persistence, individual tests, ownership/signal checks; no IDE UI claim |
 +
 +`dev.mk` owns LOCAL provider targets, `test.mk` owns `test-providers`, and `ci.mk`
@@ -183,10 +214,14 @@ index 47171f9..259a9f5 100644
 +it loads the prepared host file without IDE environment configuration. No `make ide`
 +command is needed. Rebuild an existing image when dependencies or migrations change.
 diff --git a/docs/service/development.md b/docs/service/development.md
-index 820cea4..1da6f5b 100644
 --- a/docs/service/development.md
 +++ b/docs/service/development.md
-@@ -114,0 +115,68 @@ parent workspace adoption is a separate reviewed change.
+@@ -30 +30,3 @@
+-and prints next steps. It starts no containers and modifies no application source.
++and prints next steps. Fresh setup starts no containers. Legacy migration may briefly
++start an existing PostgreSQL provider to verify its credentials, then restore its stopped state.
++Setup modifies no application source.
+@@ -114,0 +117,66 @@
 +
 +## IDE DEVELOPMENT
 +
@@ -194,7 +229,7 @@ index 820cea4..1da6f5b 100644
 +Run `python3.12 -m venv .venv`, `.venv/bin/python -m pip install -r requirements.txt`,
 +then `make setup`. `make providers ENV=local` starts PostgreSQL and Redis only,
 +waits for health, verifies loopback bindings and PostgreSQL authentication, and
-+creates private `.env.host.local`. It reuses the existing LOCAL project and DB volume.
++validates canonical configuration. It reuses the existing LOCAL project and DB volume.
 +It neither migrates nor starts Flask. Next run `make migrate ENV=local`, then
 +Run/Debug `src/main.py`. Rebuild an existing image after dependency/migration changes.
 +
@@ -207,7 +242,7 @@ index 820cea4..1da6f5b 100644
 +| Import analysis | optionally mark `src/` Sources Root | `python.analysis.extraPaths` |
 +| Tests | pytest, root working directory, select `tests/unit` or `tests/integration` | Python Test Explorer, same directories |
 +
-+Direct execution selects LOCAL automatically, reads the repository `.env.host.local`,
++Direct execution selects LOCAL automatically, reads the repository `.env.local`,
 +and constructs the factory once. Explicit DEV/TEST/unknown/blank modes are refused. It
 +binds `127.0.0.1` on validated `HOST_APP_PORT` (default 5300). It disables
 +reloader, built-in debugger and Flask generic dotenv loading. IDE breakpoints can therefore target
@@ -216,7 +251,7 @@ index 820cea4..1da6f5b 100644
 +
 +The LOCAL PostgreSQL and Redis host ports default to 55432 and 56379 on loopback.
 +`.env.local` can override `LOCAL_POSTGRES_PORT`, `LOCAL_REDIS_PORT`, and
-+`HOST_APP_PORT`. Existing two-key files remain valid. Occupied ports fail clearly.
++`HOST_APP_PORT`. Run `make setup` to migrate legacy two-key files safely. Occupied ports fail clearly.
 +`make providers-stop ENV=local` stops only the two providers and retains data,
 +containers and their network for reuse. Both provider commands refuse an active
 +full LOCAL app: use `make stop ENV=local` before switching from full Docker LOCAL.
@@ -227,11 +262,9 @@ index 820cea4..1da6f5b 100644
 +for new revisions. Host source edits need a restart, not a Docker rebuild. Repeat
 +pip installation when requirements change. Docker DEV still requires source rebuilds.
 +`make migrate ENV=local` remains canonical; explicit host Alembic environment is
-+optional. `.env.local` is Compose input only; the application never reads it.
++optional. Host and Docker derive URLs from the same `.env.local` machine configuration.
 +
-+A differing `.env.host.local` is preserved and rejected, including changed ports,
-+identity or credentials. Verify the existing volume's credentials and intended
-+configuration, then explicitly remove the stale host file and rerun `make providers`.
++Run `make setup` to migrate legacy configuration safely. Conflicting values are refused.
 +Changing `.env.local` does **not** rotate passwords in an existing PostgreSQL volume.
 +Never delete a data volume to resolve an environment mismatch.
 +
@@ -246,7 +279,7 @@ index 820cea4..1da6f5b 100644
 +never follows symlinks, evaluates shell text, discovers other dotenv files, or mutates
 +`os.environ`. Supported process overrides win over host-file values and safe LOCAL
 +defaults. Invalid overrides and non-loopback provider URLs fail; FLASK_DEBUG cannot
-+enable Flask debugging. Missing configuration directs you to `make providers ENV=local`.
++enable Flask debugging. Missing configuration directs you to setup, then providers.
 +PostgreSQL unavailability refuses startup with a credential-free message. Reachable
 +but unmigrated databases allow startup with migration guidance and Unhealthy readiness.
 +Redis unavailability retains database fallback and Degraded readiness. Startup never
@@ -256,59 +289,98 @@ index 820cea4..1da6f5b 100644
 +from the repository root or `src/`. Imported factory, unit/integration tests, Alembic,
 +and Docker never invoke this loader. Do not attach LOCAL host config to pytest.
 diff --git a/docs/service/environment.md b/docs/service/environment.md
-index 868dbf2..7837037 100644
 --- a/docs/service/environment.md
 +++ b/docs/service/environment.md
-@@ -5,2 +5,2 @@ ignored `.env.local` and `.env.dev` files with mode 0600 and random passwords;
+@@ -1 +1 @@
+-# Environment contract
++# Environment configuration
+@@ -3,5 +3 @@
+-The tracked `.env.example` documents configuration. `make setup` creates missing
+-ignored `.env.local` and `.env.dev` files with mode 0600 and random passwords;
 -it never overwrites existing configuration. Only `POSTGRES_PASSWORD` and `APP_PORT`
 -are accepted in these Compose input files. They are parsed as data, never sourced.
-+it never overwrites existing configuration. `POSTGRES_PASSWORD` and `APP_PORT`
-+are required; optional host ports are documented below. Files are parsed as data, never sourced.
-@@ -9 +9 @@ Changing a file password does not rotate an existing PostgreSQL volume password.
+-Changing a file password does not rotate an existing PostgreSQL volume password.
++There are two human-facing files per service, both ignored and private:
+@@ -9,2 +5,2 @@
 -The application does not discover dotenv files. `Settings.load()` uses the process
-+The imported factory does not discover dotenv files. `Settings.load()` uses the process
-@@ -23 +23 @@ LOCAL and DEV have distinct Compose projects, database volumes, cache namespaces
+-environment, or only an explicitly supplied mapping. The runtime contract is:
++- `.env.local`: machine credentials, ports and LOCAL/DEV preferences.
++- `.env.test`: TEST policy only. It cannot specify provider endpoints or ownership.
+@@ -12,9 +8,4 @@
+-| Variable | Meaning |
+-| --- | --- |
+-| `APP_ENV` | `local`, `dev`, or `test` |
+-| `DATABASE_URL` | Validated PostgreSQL URL; synchronous psycopg driver |
+-| `REDIS_URL` | Optional Redis/rediss URL |
+-| `CACHE_KEY_PREFIX` | Service/environment namespace |
+-| `CACHE_TTL_SECONDS` | 1–86400 seconds; default 300 |
+-| `OPENAPI_ENABLED` | Whether local Swagger assets/UI/spec are exposed |
+-| `LOG_LEVEL` | Validated application logging level |
++`make setup` creates missing files. Never copy an example or enter credentials in
++an IDE. The authoritative keys, defaults and validation live in
++`src/settings/environment.py`; application validation remains in `settings/base.py`.
++Setup preserves valid existing bytes. Invalid files fail without credential logging.
+@@ -22,5 +13 @@
+-LOCAL and DEV have distinct Compose projects, database volumes, cache namespaces,
 -and loopback HTTP ports. Their provider ports are not published. TEST uses a new
-+and loopback HTTP ports. LOCAL also publishes loopback provider ports; DEV does not. TEST uses a new
-@@ -38,0 +39,33 @@ See [development](development.md) for the exact identity table and recovery rule
+-project and ephemeral password for each run, tmpfs providers, explicit
+-`TEST_DATABASE_URL`/`TEST_REDIS_URL`, and disposable flags. Supplied invalid test
+-providers fail rather than falling back to developer infrastructure.
++## One machine configuration
+@@ -28,4 +15,4 @@
+-Smoke uses a unique disposable DEV project with a separate tooling container on
+-that project's network. `SMOKE_*` values are generated by the runtime owner, never
+-loaded from developer files. Its PostgreSQL observer connection is read-only.
+-CI uses the same commands and requires no repository secrets.
++Direct `src/main.py` reads repository `.env.local` independently of cwd and derives
++LOCAL loopback URLs. Docker LOCAL derives `postgres:5432` and `redis:6379` URLs from
++the same credentials. DEV uses its separate password, app port, project and volume
++from the same machine file. Runtime mode is not a configuration filename.
+@@ -33,4 +20,4 @@
+-Unlike Prizm's tracked local/test/smoke dotenv profiles, GoalStats intentionally
+-keeps generated private LOCAL/DEV inputs and ephemeral test/smoke credentials.
+-Service-owned DEV here means the built Gunicorn developer workflow, not a deployed
+-platform environment. Never commit real env files, URLs, passwords, or tokens.
++The machine file stores no database/Redis URLs or service identities. Database names
++and cache prefixes come from service code. Port defaults remain host app 5300,
++Docker LOCAL 5100, Docker DEV 5200, PostgreSQL 55432 and Redis 56379. All published
++LOCAL provider ports bind loopback. DEV and ordinary TEST providers are unpublished.
+@@ -38 +25,30 @@
+-See [development](development.md) for the exact identity table and recovery rules.
++The direct loader never changes `os.environ`. Approved process overrides are
++validated; contradictory modes and non-loopback host endpoints are refused. The
++factory, Alembic and tests never implicitly read machine configuration.
 +
-+## Host IDE configuration
++## TEST policy and ownership
 +
-+LOCAL Compose input additionally accepts optional validated `HOST_APP_PORT=5300`,
-+`LOCAL_POSTGRES_PORT=55432`, and `LOCAL_REDIS_PORT=56379`. Each port must be an ASCII
-+integer from 1 to 65535; host app/provider ports must be distinct. Optional
-+values come from the validated file, not ambient shell overrides. Existing input
-+without these keys remains valid. DEV and ordinary TEST providers stay unpublished.
-+LOCAL provider publications are loopback only.
++`.env.test` permits only logging, OpenAPI and cache TTL policy. Missing policy uses
++code defaults; malformed existing policy fails. Unit tests require neither file.
++CI and complete Docker integration workflows generate disposable credentials and
++runtime configuration rather than reading developer endpoints.
 +
-+`make providers ENV=local` generates ignored `.env.host.local` (0600) containing
-+`APP_ENV`, host `DATABASE_URL`/`REDIS_URL`, `CACHE_KEY_PREFIX`, `CACHE_TTL_SECONDS`,
-+`LOG_LEVEL`, `OPENAPI_ENABLED`, `HOST_APP_PORT`, and `FLASK_DEBUG=0`. Values derive
-+from the validated LOCAL config and fixed Compose identity. Direct `src/main.py`
-+loads this exact file for both IDEs; imported factories and pytest do not. Identical files are preserved; differing,
-+nonprivate or symlink files are refused. After verifying a mismatch, explicitly remove
-+the stale file and regenerate. Authentication is checked before generation; no workflow
-+claims that editing config rotates existing volume credentials.
++`make test-providers` owns an optional foreground disposable debugging session.
++Its private JSON manifests and lease under `.host-sessions/` are internal state,
++not another env file. Run an integration test normally in either IDE while exactly
++one session is active. Fixtures verify both providers before connecting. Multiple,
++stale or mismatched sessions fail closed. Collection performs no Docker discovery.
++Never use LOCAL providers for destructive integration tests.
 +
-+Host integration debugging uses private `.host-sessions/<unique-project>/test.env`
-+and a durable ownership manifest. Only the foreground `make test-providers` owner
-+creates them. Never copy their generated values into `.env.local` or a tracked file.
-+Closing the owner revokes the session and removes its files/resources. A crash or
-+SIGKILL leaves evidence for exact-project recovery, but the expired lock cannot
-+authorize further tests. Do not publish credentials from Docker inspect output.
++## Existing installation migration
 +
-+Direct execution merges supported process overrides, this host file, then LOCAL defaults.
-+Missing process APP_ENV means LOCAL; explicit blank/DEV/TEST/unknown modes fail, and the
-+host file must declare LOCAL. Database configuration is required; Redis remains optional.
-+Existing settings own cache identity, TTL 300 and INFO defaults; direct OpenAPI defaults
-+to enabled and HOST_APP_PORT to 5300. Both provider URLs must use loopback. Invalid
-+values fail rather than falling back. FLASK_DEBUG is effectively disabled regardless
-+of ambient values. Configuration loading never changes the process environment.
++Run `make setup`. Legacy LOCAL/DEV passwords and ports are preserved separately.
++Legacy host values must agree with derived identity/connection values; supported
++preferences are preserved. Conflicts or failed authentication preserve the original
++files. Existing volumes without credentials require restoration, never a new password.
++After validation, setup writes canonical files privately and retains recoverable
++original files under ignored internal migration state before retiring legacy files.
++Changing a password in configuration does not rotate an existing PostgreSQL volume.
++Never delete a data volume to resolve a configuration mismatch.
++
++Generic dotenv discovery and production/cloud configuration are not part of this project.
 diff --git a/docs/standard/template.md b/docs/standard/template.md
-index 367782f..69ffb3a 100644
 --- a/docs/standard/template.md
 +++ b/docs/standard/template.md
-@@ -69,0 +70,38 @@ identities and unrelated-resource sentinels remain intentionally generic.
+@@ -69,0 +70,24 @@
 +
 +## Host development and propagation
 +
@@ -320,27 +392,13 @@ index 367782f..69ffb3a 100644
 +uses its existing prepend path, and Docker/Gunicorn use their existing PYTHONPATH.
 +
 +Track only portable `.vscode/settings.json`, `.vscode/launch.json`, and optional
-+`.vscode/extensions.json`. Ignore `.idea/`, `.venv/`, `.env.host.local`, and
++`.vscode/extensions.json`. Ignore `.idea/`, `.venv/`, `.env.local`, and
 +`.host-sessions/`. No extra dotenv example or dependency manifest is introduced.
 +
-+Prompt 2 must extend the parent's exact `scripts/scaffold-transform.py:IDENTITY_PATHS`:
-+
-+- Database identities `goalstats_template_py_local` / `goalstats_template_py_dev`:
-+  add `scripts/host_development.py` to their prefix's exact allowlist.
-+- `goalstats-template-py`: add `scripts/host_development.py`,
-+  `scripts/test_ownership.py`, and `scripts/tests/test_host_development.py`.
-+
-+Existing allowed paths cover remaining identity occurrences. Shared VS Code files
-+and the host certification module contain no service identity. Generic TEST database,
-+receipt/session labels and extension keys stay unchanged. The existing path policy
-+accepts portable VS Code JSON and rejects any new `.env.*` example; retain `.env.example`
-+as the only tracked env source. Strengthen parent artifact rejection for `.idea/`
-+and `.host-sessions/`, and restrict `.vscode/` payloads to the three portable files.
-+Add transformation/contract tests for these identity paths, exact host entrypoint,
-+provider commands, ownership guard and portable IDE files; update the independent
-+scaffold fixture/golden expectations and parent development contract accordingly.
-+After certification/publication authorization, update the parent's canonical template
-+SHA and approved pins in the later prompts. No parent or User changes occur here.
++Scaffolding must preserve the shared code-owned configuration schema, private setup,
++manifest-based TEST ownership and portable IDE launch. Reject all real env files and
++internal state from payloads; generated services create their own `.env.local` and
++`.env.test` through setup. Identity literals are transformed only in reviewed paths.
 +
 +Direct `src/main.py` means LOCAL host development. The service-neutral
 +`src/settings/host.py` loader belongs only to that entrypoint; the factory, Docker,
@@ -348,10 +406,9 @@ index 367782f..69ffb3a 100644
 +an env file; PyCharm Python script Run needs no environment profile. Scaffold guards
 +must validate this shared loader and preserve its source bytes without identity rewrites.
 diff --git a/docs/testing/certification.md b/docs/testing/certification.md
-index df37f03..b976745 100644
 --- a/docs/testing/certification.md
 +++ b/docs/testing/certification.md
-@@ -37,0 +38,45 @@ commit, push, or certify a future published SHA.
+@@ -37,0 +38,45 @@
 +
 +## Automated host certification and manual IDE acceptance
 +
@@ -392,38 +449,36 @@ index df37f03..b976745 100644
 +Do not report actual IDE debugger/discovery acceptance from CLI tests alone.
 +
 +Zero-friction startup acceptance uses an exact disposable source copy and its actual
-+repository `.env.host.local`; the developer's private file is never replaced. It
++repository `.env.local`; the developer's private file is never replaced. It
 +launches bare main with application variables removed, from root and `src/` cwd.
 +Unit tests cover private-file parsing, contradictory modes, precedence, loopback,
 +provider diagnostics, occupied ports, and factory/import isolation. Actual IDE Run
 +must use no env-file profile; command-line acceptance never implies breakpoint acceptance.
 diff --git a/docs/testing/overview.md b/docs/testing/overview.md
-index baf8f67..f964443 100644
 --- a/docs/testing/overview.md
 +++ b/docs/testing/overview.md
-@@ -29,2 +29,4 @@ integration/full/coverage runs must have zero skips. Invalid or unavailable supp
+@@ -29,2 +29,4 @@
 -providers fail. PostgreSQL uses a dedicated `goalstats_test_*` database; Redis cleanup
 -is limited to each fixture's unique prefix. No FLUSHALL or shared database fallback.
 +providers fail. PostgreSQL uses a dedicated `goalstats_test_*` database within an
 +ownership-verified disposable provider; that name alone is not proof. Redis keys
 +use fixture prefixes, and tests that change server-wide ACL state require the same
 +verified disposable ownership. No shared database/cache fallback is permitted.
-@@ -39,0 +42,31 @@ See [smoke](smoke.md), [certification](certification.md), and
+@@ -39,0 +42,30 @@
 +
 +## IDE integration debugging
 +
 +Both IDEs discover unit and integration tests from the repository root. Collection
 +never provisions providers; smoke still requires explicit `--smoke`. Unit tests
 +need no Docker or provider URLs. Run a folder, file, or single node with the repo
-+`.venv/bin/python -m pytest`; never apply `.env.host.local` globally to testing.
++`.venv/bin/python -m pytest`; never apply `.env.local` globally to testing.
 +
 +Run `make test-providers` in a terminal and leave it in the foreground. It starts
 +fresh disposable TEST PostgreSQL/Redis with generated credentials and dynamic
-+loopback ports, then prints only the path to a private `test.env`. In PyCharm make
-+a pytest configuration for the desired integration file/node, root working directory,
-+repo `.venv`, and this env file. In VS Code choose `pytest: owned TEST session` and
-+enter that path and test node when prompted. This launch is separate from Test Explorer's
-+ordinary discovery/unit environment. Use only one pytest process per session.
++loopback ports. Private JSON manifests are internal ownership state. Run the desired
++integration file/node in PyCharm, or choose `pytest: owned TEST session` in VS Code.
++No env profile is needed. Exactly one session must be present; ambiguity fails closed.
++Use only one pytest process per session.
 +The database fixture migrates the disposable database on first use.
 +
 +Before connecting, fixtures verify the private manifest, active owner lock/PID,
@@ -441,7 +496,6 @@ index baf8f67..f964443 100644
 +not require an IDE session. Ctrl-C/SIGTERM on the host owner revokes its manifest,
 +removes its exact owned resources and private files, and preserves LOCAL/DEV data.
 diff --git a/make/ci.mk b/make/ci.mk
-index a657b35..232dd74 100644
 --- a/make/ci.mk
 +++ b/make/ci.mk
 @@ -1,2 +1,2 @@
@@ -450,7 +504,6 @@ index a657b35..232dd74 100644
 +.PHONY: check tooling certify certify-host
 +check tooling certify certify-host:
 diff --git a/make/dev.mk b/make/dev.mk
-index fde94c0..f4816eb 100644
 --- a/make/dev.mk
 +++ b/make/dev.mk
 @@ -1,2 +1,2 @@
@@ -459,7 +512,6 @@ index fde94c0..f4816eb 100644
 +.PHONY: build run stop logs providers providers-stop
 +build run stop logs providers providers-stop:
 diff --git a/make/test.mk b/make/test.mk
-index 6bceaa2..b8772cb 100644
 --- a/make/test.mk
 +++ b/make/test.mk
 @@ -1,2 +1,2 @@
@@ -467,12 +519,198 @@ index 6bceaa2..b8772cb 100644
 -unit integration test smoke:
 +.PHONY: unit integration test smoke test-providers
 +unit integration test smoke test-providers:
+diff --git a/scripts/environment_config.py b/scripts/environment_config.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/environment_config.py
+@@ -0,0 +1,10 @@
++"""Load the service's stdlib schema without requiring installed application dependencies."""
++
++import importlib.util
++from pathlib import Path
++
++_path = Path(__file__).resolve().parents[1] / "src/settings/environment.py"
++_spec = importlib.util.spec_from_file_location("goalstats_environment_schema", _path)
++assert _spec is not None and _spec.loader is not None
++schema = importlib.util.module_from_spec(_spec)
++_spec.loader.exec_module(schema)
+diff --git a/scripts/environment_setup.py b/scripts/environment_setup.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/environment_setup.py
+@@ -0,0 +1,167 @@
++"""Create/migrate private configuration, preserving credentials before retiring old files."""
++
++import errno
++import fcntl
++import os
++import secrets
++import tempfile
++from pathlib import Path
++
++from environment_config import schema
++
++LEGACY_KEYS = frozenset(
++    {"POSTGRES_PASSWORD", "APP_PORT", "HOST_APP_PORT", "LOCAL_POSTGRES_PORT", "LOCAL_REDIS_PORT"}
++)
++HOST_KEYS = frozenset(
++    {
++        "APP_ENV",
++        "DATABASE_URL",
++        "REDIS_URL",
++        "CACHE_KEY_PREFIX",
++        "HOST_APP_PORT",
++        "FLASK_DEBUG",
++        *schema.POLICY_DEFAULTS,
++    }
++)
++
++
++def private_write(path, content):
++    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
++    with os.fdopen(fd, "w") as stream:
++        stream.write(content)
++        stream.flush()
++        os.fsync(stream.fileno())
++
++
++def text(values):
++    return "".join(f"{key}={value}\n" for key, value in values.items())
++
++
++def setup_files(root, *, has_volume, verify):
++    descriptor = os.open(root, os.O_RDONLY)
++    try:
++        try:
++            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
++        except BlockingIOError:
++            raise RuntimeError("Another setup is active; wait for it to finish.") from None
++        _setup_files(root, has_volume=has_volume, verify=verify)
++    finally:
++        os.close(descriptor)
++
++
++def _setup_files(root, *, has_volume, verify):
++    root = Path(root)
++    local, dev, host, test = (
++        root / name for name in (".env.local", ".env.dev", ".env.host.local", ".env.test")
++    )
++    # Validate everything before writing anything, including optional TEST policy.
++    test_values = schema.test_policy(root)
++    old = {}
++    for path, keys in (
++        (local, schema.LOCAL_KEYS | LEGACY_KEYS),
++        (dev, LEGACY_KEYS),
++        (host, HOST_KEYS),
++    ):
++        if path.exists() or path.is_symlink():
++            old[path] = schema.read_private(path, keys)
++    for path in (local, dev):
++        if path in old and "POSTGRES_PASSWORD" not in old[path]:
++            raise RuntimeError("Existing credentials are missing; restore them before setup.")
++    if (
++        local in old
++        and "APP_PORT" not in old[local]
++        and "DEV_POSTGRES_PASSWORD" not in old[local]
++        and dev not in old
++    ):
++        raise RuntimeError("Canonical configuration is missing DEV credentials; restore them.")
++    values = dict(old.get(local, {}))
++    if "APP_PORT" in values:
++        if "LOCAL_APP_PORT" in values and values["LOCAL_APP_PORT"] != values["APP_PORT"]:
++            raise RuntimeError("Conflicting LOCAL app ports; existing files preserved.")
++        values["LOCAL_APP_PORT"] = values.pop("APP_PORT")
++    for mode, key in (("local", "POSTGRES_PASSWORD"), ("dev", "DEV_POSTGRES_PASSWORD")):
++        previous = old.get(dev, {}).get("POSTGRES_PASSWORD") if mode == "dev" else None
++        if previous:
++            if key in values and values[key] != previous:
++                raise RuntimeError("Conflicting DEV credentials; existing files preserved.")
++            values[key] = previous
++        if key not in values:
++            if has_volume(mode):
++                raise RuntimeError(
++                    "Existing volume needs its original credentials. Restore configuration."
++                )
++            values[key] = secrets.token_hex(24)
++    if dev in old:
++        port = old[dev].get("APP_PORT")
++        if not port:
++            raise RuntimeError("Legacy DEV app port is missing; existing files preserved.")
++        if "DEV_APP_PORT" in values and values["DEV_APP_PORT"] != port:
++            raise RuntimeError("Conflicting DEV app ports; existing files preserved.")
++        values["DEV_APP_PORT"] = port
++    values = schema.machine(values)
++    if host in old:
++        if not {"APP_ENV", "DATABASE_URL"} <= old[host].keys():
++            raise RuntimeError("Legacy host configuration is incomplete; files preserved.")
++        derived = schema.application(values, "local", host=True)
++        for key, value in old[host].items():
++            if key in schema.POLICY_DEFAULTS:
++                if key in old.get(local, {}) and old[local][key] != value:
++                    raise RuntimeError("Conflicting LOCAL preferences; existing files preserved.")
++                values[key] = value
++            elif derived.get(key) != value:
++                raise RuntimeError(
++                    "Legacy host configuration conflicts with machine values; files preserved."
++                )
++        values = schema.machine(values)
++    migrating = bool(dev in old or host in old or "APP_PORT" in old.get(local, {}))
++    if migrating:
++        # Existing volumes are authenticated before either configuration replacement or retirement.
++        for mode in ("local", "dev"):
++            if has_volume(mode):
++                verify(mode, values)
++    if local in old and not migrating:
++        schema.machine(old[local])
++    else:
++        if old:
++            internal = root / ".host-sessions"
++            internal.mkdir(mode=0o700, exist_ok=True)
++            if (
++                internal.is_symlink()
++                or internal.stat().st_uid != os.getuid()
++                or internal.stat().st_mode & 0o077
++            ):
++                raise RuntimeError("Internal migration directory must be private and user-owned.")
++            backup = Path(tempfile.mkdtemp(prefix="migration-", dir=internal))
++            for path in old:
++                private_write(backup / (path.name + ".backup"), path.read_text())
++        internal = root / ".host-sessions"
++        created_internal = not internal.exists()
++        internal.mkdir(mode=0o700, exist_ok=True)
++        if (
++            internal.is_symlink()
++            or internal.stat().st_uid != os.getuid()
++            or internal.stat().st_mode & 0o077
++        ):
++            raise RuntimeError("Internal configuration state must be private and user-owned.")
++        fd, temporary = tempfile.mkstemp(prefix="config-write-", dir=internal)
++        try:
++            with os.fdopen(fd, "w") as stream:
++                stream.write(text(values))
++                stream.flush()
++                os.fsync(stream.fileno())
++            os.replace(temporary, local)
++        finally:
++            if os.path.exists(temporary):
++                os.unlink(temporary)
++            if created_internal:
++                try:
++                    internal.rmdir()
++                except OSError as exc:
++                    if exc.errno != errno.ENOTEMPTY:
++                        raise
++        for path in (dev, host):
++            if path in old:
++                path.unlink()
++    if not test.exists():
++        private_write(test, text(test_values))
++    print("Private .env.local and .env.test ready; existing credentials preserved.")
 diff --git a/scripts/host_development.py b/scripts/host_development.py
 new file mode 100644
-index 0000000..7404c98
 --- /dev/null
 +++ b/scripts/host_development.py
-@@ -0,0 +1,298 @@
+@@ -0,0 +1,261 @@
 +"""Additive host development orchestration. No implicit application dotenv loading."""
 +
 +import fcntl
@@ -482,6 +720,7 @@ index 0000000..7404c98
 +import socket
 +import time
 +
++from environment_config import schema
 +from test_ownership import SESSION_LABEL, inspect_container, verify_host_session
 +from workflow import ROOT, Stack, assert_absent
 +
@@ -521,39 +760,7 @@ index 0000000..7404c98
 +
 +
 +def local_environment(stack):
-+    settings = stack.settings
-+    return {
-+        "APP_ENV": "local",
-+        "DATABASE_URL": (
-+            "postgresql+psycopg://goalstats:"
-+            + settings["POSTGRES_PASSWORD"]
-+            + "@127.0.0.1:"
-+            + settings.get("LOCAL_POSTGRES_PORT", "55432")
-+            + "/goalstats_template_py_local"
-+        ),
-+        "REDIS_URL": "redis://127.0.0.1:" + settings.get("LOCAL_REDIS_PORT", "56379") + "/0",
-+        "CACHE_KEY_PREFIX": "goalstats-template-py:local:v1",
-+        "CACHE_TTL_SECONDS": "300",
-+        "LOG_LEVEL": "INFO",
-+        "OPENAPI_ENABLED": "true",
-+        "HOST_APP_PORT": settings.get("HOST_APP_PORT", "5300"),
-+        "FLASK_DEBUG": "0",
-+    }
-+
-+
-+def check_host_file(path, content):
-+    if path.is_symlink():
-+        raise RuntimeError("Refusing symlink host environment")
-+    if path.exists():
-+        info = path.stat()
-+        if info.st_uid != os.getuid() or info.st_mode & 0o077:
-+            raise RuntimeError("Host environment must be owned by this user with mode 0600")
-+        if path.read_text() != content:
-+            raise RuntimeError(
-+                "Stale or edited .env.host.local preserved. Verify provider ports/identity and "
-+                "existing database credentials, then explicitly remove it and rerun providers. "
-+                "Changing configuration does NOT rotate PostgreSQL volume credentials."
-+            )
++    return schema.application({**schema.PORT_DEFAULTS, **stack.settings}, "local", host=True)
 +
 +
 +def check_local_bindings(stack, *, before=False):
@@ -595,7 +802,7 @@ index 0000000..7404c98
 +            raise RuntimeError("LOCAL provider binding verification failed")
 +
 +
-+def local_providers(stack, *, stop=False, host_path=None):
++def local_providers(stack, *, stop=False):
 +    if stack.env != "local":
 +        raise RuntimeError("Host providers require LOCAL")
 +    refuse_active_app(stack)
@@ -612,9 +819,6 @@ index 0000000..7404c98
 +    ]
 +    if len(set(map(int, ports))) != len(ports):
 +        raise RuntimeError("Host app and provider ports must be distinct")
-+    path = host_path or ROOT / ".env.host.local"
-+    content = env_text(local_environment(stack))
-+    check_host_file(path, content)
 +    check_local_bindings(stack, before=True)
 +    stack.providers()
 +    check_local_bindings(stack)
@@ -642,12 +846,9 @@ index 0000000..7404c98
 +    if result.returncode or result.stdout.strip() != "1":
 +        raise RuntimeError(
 +            "LOCAL database authentication failed. Configuration does not rotate existing "
-+            "volume credentials; restore the correct password before generating host env."
++            "volume credentials; restore the correct password before starting providers."
 +        )
-+    check_host_file(path, content)
-+    if not path.exists():
-+        private_write(path, content)
-+    print("LOCAL providers healthy; private host environment ready. No app or migration started.")
++    print("LOCAL providers healthy; canonical configuration ready. No app or migration started.")
 +    print(
 +        "Existing PostgreSQL volume credentials are unchanged; readiness verifies authentication."
 +    )
@@ -701,7 +902,6 @@ index 0000000..7404c98
 +        )
 +        stack.args += ["-f", override]
 +        manifest_path = directory / "manifest.json"
-+        env_path = directory / "test.env"
 +        # Starting evidence survives a provider failure or an uncatchable owner crash.
 +        evidence = directory / "ownership.json"
 +        private_write(
@@ -737,6 +937,7 @@ index 0000000..7404c98
 +                        "token": token,
 +                        "pid": os.getpid(),
 +                        "urls": urls,
++                        "policy": schema.test_policy(ROOT),
 +                        "containers": {s: c["Id"] for s, c in containers.items()},
 +                    }
 +                ),
@@ -751,9 +952,11 @@ index 0000000..7404c98
 +                "TEST_SESSION_MANIFEST": str(manifest_path),
 +                "FLASK_DEBUG": "0",
 +            }
-+            private_write(env_path, env_text(env))
 +            verify_host_session(env)
-+            print(f"Owned TEST session ready. Explicit IDE env file: {env_path}", flush=True)
++            print(
++                "Owned TEST session ready. Run an integration test here; no env profile needed.",
++                flush=True,
++            )
 +            print(
 +                "Keep this owner running. Ctrl-C/SIGTERM removes only this disposable session.",
 +                flush=True,
@@ -764,8 +967,6 @@ index 0000000..7404c98
 +            # Revoke the lease before cleanup; retain evidence on cleanup failure.
 +            if manifest_path.exists():
 +                manifest_path.unlink()
-+            if env_path.exists():
-+                env_path.unlink()
 +            stack.stop(volumes=True)
 +            assert_absent(project)
 +            for path in directory.iterdir():
@@ -773,10 +974,9 @@ index 0000000..7404c98
 +            directory.rmdir()
 diff --git a/scripts/test_ownership.py b/scripts/test_ownership.py
 new file mode 100644
-index 0000000..b0d1b70
 --- /dev/null
 +++ b/scripts/test_ownership.py
-@@ -0,0 +1,147 @@
+@@ -0,0 +1,177 @@
 +"""Fail-closed ownership verification before any host TEST provider connection."""
 +
 +import fcntl
@@ -787,6 +987,8 @@ index 0000000..b0d1b70
 +import subprocess
 +from pathlib import Path
 +from urllib.parse import urlsplit
++
++from environment_config import schema
 +
 +ROOT = Path(__file__).resolve().parents[1]
 +SESSION_LABEL = "dev.host-test-session"
@@ -899,8 +1101,8 @@ index 0000000..b0d1b70
 +        return manifest
 +    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
 +        raise RuntimeError(
-+            "Unverified TEST providers: start make test-providers and explicitly load its "
-+            "current private env file; stale or mismatched sessions are refused."
++            "Unverified TEST providers: start make test-providers and use its "
++            "owned session; stale or mismatched sessions are refused."
 +        ) from None
 +
 +
@@ -924,12 +1126,139 @@ index 0000000..b0d1b70
 +        except (OSError, ValueError, KeyError, TypeError):
 +            raise RuntimeError("Invalid owned Docker TEST runner receipt") from None
 +    verify_host_session(env)
++
++
++def owned_test_config(environ=None):
++    """Resolve only at fixture execution; manifests never authorize unchecked endpoints."""
++    env = dict(os.environ if environ is None else environ)
++    if any(key in env for key in ("TEST_DATABASE_URL", "TEST_REDIS_URL", "TEST_SESSION_MANIFEST")):
++        verify_test_providers(env)
++        return env
++    paths = list((ROOT / ".host-sessions").glob("*/manifest.json"))
++    if len(paths) != 1:
++        raise RuntimeError(
++            "Start make test-providers in this repository; exactly one active session is required."
++        )
++    path = paths[0]
++    try:
++        data = json.loads(private_file(path))
++        values = {**data["urls"], "TEST_SESSION_MANIFEST": str(path)}
++        manifest = verify_host_session(values)
++        preferences = schema.policy(manifest.get("policy", {}))
++    except (OSError, ValueError, KeyError, TypeError):
++        raise RuntimeError("Invalid owned TEST session; restart make test-providers.") from None
++    return {
++        **preferences,
++        **values,
++        "APP_ENV": "test",
++        "TEST_DATABASE_DISPOSABLE": "1",
++        "TEST_REDIS_DISPOSABLE": "1",
++    }
+diff --git a/scripts/tests/test_environment_setup.py b/scripts/tests/test_environment_setup.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/tests/test_environment_setup.py
+@@ -0,0 +1,95 @@
++"""Migration is transactional with respect to validation and keeps both credentials."""
++
++from unittest.mock import Mock
++
++import pytest
++from environment_config import schema
++from environment_setup import private_write, setup_files
++
++
++def legacy(root):
++    private_write(root / ".env.local", "POSTGRES_PASSWORD=abcdefghijklmnop\nAPP_PORT=5101\n")
++    private_write(root / ".env.dev", "POSTGRES_PASSWORD=ponmlkjihgfedcba\nAPP_PORT=5201\n")
++
++
++def test_fresh_and_idempotent(tmp_path):
++    setup_files(tmp_path, has_volume=lambda _: False, verify=Mock())
++    assert {p.name for p in tmp_path.iterdir()} == {".env.local", ".env.test"}
++    before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
++    assert all(p.stat().st_mode & 0o777 == 0o600 for p in tmp_path.iterdir())
++    setup_files(tmp_path, has_volume=lambda _: False, verify=Mock())
++    assert before == {p.name: p.read_bytes() for p in tmp_path.iterdir()}
++
++
++def test_migration_preserves_both_credentials_and_authenticates_before_retiring(tmp_path):
++    legacy(tmp_path)
++    before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
++    calls = []
++
++    def verify(mode, values):
++        assert (tmp_path / ".env.dev").exists()
++        calls.append(mode)
++        assert values["POSTGRES_PASSWORD"] == "abcdefghijklmnop"
++        assert values["DEV_POSTGRES_PASSWORD"] == "ponmlkjihgfedcba"
++
++    setup_files(tmp_path, has_volume=lambda _: True, verify=verify)
++    assert calls == ["local", "dev"]
++    values = schema.load_machine(tmp_path / ".env.local")
++    assert values["LOCAL_APP_PORT"] == "5101" and values["DEV_APP_PORT"] == "5201"
++    assert not (tmp_path / ".env.dev").exists()
++    backups = list((tmp_path / ".host-sessions").glob("migration-*"))
++    assert len(backups) == 1
++    for name, content in before.items():
++        assert (backups[0] / (name + ".backup")).read_bytes() == content
++
++
++@pytest.mark.parametrize("failure", ["auth", "host", "policy"])
++def test_conflicts_leave_every_original_byte(tmp_path, failure):
++    legacy(tmp_path)
++    if failure == "host":
++        private_write(tmp_path / ".env.host.local", "APP_ENV=dev\n")
++    if failure == "policy":
++        private_write(tmp_path / ".env.test", "DATABASE_URL=forbidden\n")
++    before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
++    with pytest.raises((RuntimeError, schema.EnvironmentError)):
++        setup_files(
++            tmp_path, has_volume=lambda _: True, verify=Mock(side_effect=RuntimeError("auth"))
++        )
++    assert before == {p.name: p.read_bytes() for p in tmp_path.iterdir()}
++
++
++def test_missing_configuration_never_replaces_existing_volume_password(tmp_path):
++    with pytest.raises(RuntimeError, match="Restore"):
++        setup_files(tmp_path, has_volume=lambda _: True, verify=Mock())
++    assert not list(tmp_path.iterdir())
++
++
++@pytest.mark.parametrize(
++    "key",
++    [
++        "DATABASE_URL",
++        "REDIS_URL",
++        "POSTGRES_PASSWORD",
++        "APP_PORT",
++        "TEST_DATABASE_DISPOSABLE",
++        "TEST_SESSION_MANIFEST",
++    ],
++)
++def test_test_policy_never_accepts_provider_authority(tmp_path, key):
++    private_write(tmp_path / ".env.test", key + "=secret\n")
++    with pytest.raises(schema.EnvironmentError) as error:
++        schema.test_policy(tmp_path)
++    assert "secret" not in str(error.value)
++
++
++def test_host_and_container_urls_share_local_identity():
++    values = schema.machine(
++        {"POSTGRES_PASSWORD": "abcdefghijklmnop", "DEV_POSTGRES_PASSWORD": "ponmlkjihgfedcba"}
++    )
++    host = schema.application(values, "local", host=True)
++    docker = schema.application(values, "local")
++    assert (
++        host["DATABASE_URL"].replace("127.0.0.1:55432", "postgres:5432") == docker["DATABASE_URL"]
++    )
++    assert host["REDIS_URL"].replace("127.0.0.1:56379", "redis:6379") == docker["REDIS_URL"]
++    assert host["CACHE_KEY_PREFIX"] == docker["CACHE_KEY_PREFIX"]
 diff --git a/scripts/tests/test_host_development.py b/scripts/tests/test_host_development.py
 new file mode 100644
-index 0000000..1f03386
 --- /dev/null
 +++ b/scripts/tests/test_host_development.py
-@@ -0,0 +1,227 @@
+@@ -0,0 +1,228 @@
 +"""Provider-free host safety checks; no test connects to a database or cache."""
 +
 +import fcntl
@@ -948,7 +1277,10 @@ index 0000000..1f03386
 +@pytest.mark.parametrize("value", ["0", "65536", "no", "-1", "５３００", ""])
 +def test_invalid_host_port_refused(tmp_path, key, value):
 +    path = tmp_path / ".env.local"
-+    path.write_text(f"POSTGRES_PASSWORD=abcdefghijklmnop\nAPP_PORT=5100\n{key}={value}\n")
++    path.write_text(
++        f"POSTGRES_PASSWORD=abcdefghijklmnop\nDEV_POSTGRES_PASSWORD=ponmlkjihgfedcba\nLOCAL_APP_PORT=5100\n{key}={value}\n"
++    )
++    path.chmod(0o600)
 +    with pytest.raises(RuntimeError, match=key):
 +        read_settings(path)
 +
@@ -959,30 +1291,6 @@ index 0000000..1f03386
 +    stack = Stack("local", settings={"POSTGRES_PASSWORD": "unused", "APP_PORT": "5100"})
 +    assert stack.process_env["LOCAL_POSTGRES_PORT"] == "55432"
 +    assert stack.process_env["LOCAL_REDIS_PORT"] == "56379"
-+
-+
-+def test_stale_private_host_file_preserved_and_secrets_not_reported(tmp_path):
-+    path = tmp_path / ".env.host.local"
-+    host.private_write(path, "old secret")
-+    with pytest.raises(RuntimeError, match="Stale") as exc:
-+        host.check_host_file(path, "new secret")
-+    assert path.read_text() == "old secret"
-+    assert "secret" not in str(exc.value)
-+    assert path.stat().st_mode & 0o777 == 0o600
-+    host.check_host_file(path, "old secret")
-+    path.chmod(0o644)
-+    with pytest.raises(RuntimeError, match="0600"):
-+        host.check_host_file(path, "old secret")
-+
-+
-+def test_symlink_host_file_refused(tmp_path):
-+    target = tmp_path / "target"
-+    host.private_write(target, "preserve")
-+    path = tmp_path / ".env.host.local"
-+    path.symlink_to(target)
-+    with pytest.raises(RuntimeError, match="symlink"):
-+        host.check_host_file(path, "replacement")
-+    assert target.read_text() == "preserve"
 +
 +
 +def test_provider_stop_refuses_active_full_app():
@@ -1157,12 +1465,192 @@ index 0000000..1f03386
 +            Path(env["TEST_SESSION_MANIFEST"]).write_text(json.dumps(manifest))
 +    with pytest.raises(RuntimeError, match="Unverified"):
 +        ownership.verify_host_session(env)
++
++
++def test_owned_session_discovered_without_environment_profile(owned_session):
++    env, _, _, _ = owned_session
++    values = ownership.owned_test_config({})
++    assert values["TEST_DATABASE_URL"] == env["TEST_DATABASE_URL"]
++    assert values["TEST_REDIS_URL"] == env["TEST_REDIS_URL"]
++    assert values["TEST_DATABASE_DISPOSABLE"] == "1"
++
++
++def test_ambiguous_sessions_refused_without_provider_inspection(owned_session, monkeypatch):
++    from pathlib import Path
++
++    env, _, _, _ = owned_session
++    extra = Path(env["TEST_SESSION_MANIFEST"]).parent.parent / "other"
++    extra.mkdir()
++    (extra / "manifest.json").write_text("{}")
++    inspect = Mock(side_effect=AssertionError("must not inspect"))
++    monkeypatch.setattr(ownership, "inspect_container", inspect)
++    with pytest.raises(RuntimeError, match="exactly one"):
++        ownership.owned_test_config({})
++    inspect.assert_not_called()
+diff --git a/scripts/tests/test_workflow.py b/scripts/tests/test_workflow.py
+--- a/scripts/tests/test_workflow.py
++++ b/scripts/tests/test_workflow.py
+@@ -27,3 +27,10 @@
+-    config.write_text("# comment\nPOSTGRES_PASSWORD=abcdefghijklmnop\nAPP_PORT=5101\n")
+-    assert read_settings(config) == {"POSTGRES_PASSWORD": "abcdefghijklmnop", "APP_PORT": "5101"}
+-    config.write_text("POSTGRES_PASSWORD=$(touch unexpected)\nAPP_PORT=5101\n")
++    config.write_text(
++        "# comment\nPOSTGRES_PASSWORD=abcdefghijklmnop\n"
++        "DEV_POSTGRES_PASSWORD=ponmlkjihgfedcba\nLOCAL_APP_PORT=5101\n"
++    )
++    config.chmod(0o600)
++    assert read_settings(config)["POSTGRES_PASSWORD"] == "abcdefghijklmnop"
++    assert read_settings(config)["APP_PORT"] == "5101"
++    config.write_text(
++        "POSTGRES_PASSWORD=$(touch unexpected)\nDEV_POSTGRES_PASSWORD=ponmlkjihgfedcba\n"
++    )
+@@ -93 +100,3 @@
+-    monkeypatch.setattr(workflow, "run", lambda *args, **kwargs: None)
++    monkeypatch.setattr(
++        workflow, "run", lambda *args, **kwargs: __import__("types").SimpleNamespace(stdout="")
++    )
+diff --git a/scripts/validation/certify_environment.py b/scripts/validation/certify_environment.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/validation/certify_environment.py
+@@ -0,0 +1,132 @@
++"""Disposable migration certification; optional source contains private legacy config only."""
++
++import secrets
++import tempfile
++from pathlib import Path
++
++from environment_config import schema
++from environment_setup import private_write, setup_files, text
++from workflow import assert_absent, fresh
++
++
++def certify_environment(source=None):
++    stacks = {mode: fresh(mode) for mode in ("local", "dev")}
++    marker = secrets.token_hex(12)
++    try:
++        with tempfile.TemporaryDirectory(prefix="environment-migration-") as directory:
++            root = Path(directory)
++            for mode in stacks:
++                path = root / (".env." + mode)
++                if source is not None:
++                    content = (Path(source) / path.name).read_text()
++                else:
++                    content = text(
++                        {
++                            "POSTGRES_PASSWORD": secrets.token_hex(24),
++                            "APP_PORT": schema.PORT_DEFAULTS[mode.upper() + "_APP_PORT"],
++                        }
++                    )
++                private_write(path, content)
++            local = schema.read_private(
++                root / ".env.local",
++                frozenset(
++                    {
++                        "POSTGRES_PASSWORD",
++                        "APP_PORT",
++                        "HOST_APP_PORT",
++                        "LOCAL_POSTGRES_PORT",
++                        "LOCAL_REDIS_PORT",
++                    }
++                ),
++            )
++            dev = schema.read_private(
++                root / ".env.dev", frozenset({"POSTGRES_PASSWORD", "APP_PORT"})
++            )
++            host_path = root / ".env.host.local"
++            if source is not None and (Path(source) / host_path.name).exists():
++                private_write(host_path, (Path(source) / host_path.name).read_text())
++            else:
++                machine = schema.machine(
++                    {
++                        "POSTGRES_PASSWORD": local["POSTGRES_PASSWORD"],
++                        "DEV_POSTGRES_PASSWORD": dev["POSTGRES_PASSWORD"],
++                        "LOCAL_APP_PORT": local["APP_PORT"],
++                        "DEV_APP_PORT": dev["APP_PORT"],
++                    }
++                )
++                private_write(host_path, text(schema.application(machine, "local", host=True)))
++            old = {p.name: p.read_bytes() for p in root.iterdir()}
++            for mode, original in (("local", local), ("dev", dev)):
++                stack = stacks[mode]
++                stack.settings["POSTGRES_PASSWORD"] = original["POSTGRES_PASSWORD"]
++                stack.process_env["POSTGRES_PASSWORD"] = original["POSTGRES_PASSWORD"]
++                stack.providers()
++                stack.compose(
++                    "exec",
++                    "-T",
++                    "postgres",
++                    "psql",
++                    "-U",
++                    "goalstats",
++                    "-d",
++                    schema.DATABASE + "_" + mode,
++                    "-v",
++                    "ON_ERROR_STOP=1",
++                    "-c",
++                    "CREATE TABLE environment_migration_probe (marker text); "
++                    "INSERT INTO environment_migration_probe VALUES ('" + marker + "');",
++                    capture=True,
++                )
++
++            def verify(mode, values):
++                password = values[
++                    "POSTGRES_PASSWORD" if mode == "local" else "DEV_POSTGRES_PASSWORD"
++                ]
++                result = stacks[mode].compose(
++                    "exec",
++                    "-T",
++                    "-e",
++                    "PGPASSWORD=" + password,
++                    "postgres",
++                    "psql",
++                    "-h",
++                    "postgres",
++                    "-U",
++                    "goalstats",
++                    "-d",
++                    schema.DATABASE + "_" + mode,
++                    "-At",
++                    "-c",
++                    "SELECT marker FROM environment_migration_probe",
++                    capture=True,
++                    check=False,
++                )
++                assert result.returncode == 0 and result.stdout.strip() == marker, (
++                    "Migration authentication/data verification failed"
++                )
++
++            setup_files(root, has_volume=lambda _: True, verify=verify)
++            values = schema.load_machine(root / ".env.local")
++            assert values["POSTGRES_PASSWORD"] == local["POSTGRES_PASSWORD"]
++            assert values["DEV_POSTGRES_PASSWORD"] == dev["POSTGRES_PASSWORD"]
++            assert values["LOCAL_APP_PORT"] == local["APP_PORT"]
++            assert values["DEV_APP_PORT"] == dev["APP_PORT"]
++            for mode in stacks:
++                verify(mode, values)
++            backup = next((root / ".host-sessions").glob("migration-*"))
++            assert all(
++                (backup / (name + ".backup")).read_bytes() == content
++                for name, content in old.items()
++            )
++            before = (root / ".env.local").read_bytes()
++            setup_files(root, has_volume=lambda _: True, verify=verify)
++            assert before == (root / ".env.local").read_bytes()
++            assert not (root / ".env.dev").exists()
++        print(
++            "Environment migration: PASS (credentials, ports, data, backups, idempotence)",
++            flush=True,
++        )
++    finally:
++        for stack in stacks.values():
++            stack.stop(volumes=True)
++            assert_absent(stack.project)
 diff --git a/scripts/validation/certify_host.py b/scripts/validation/certify_host.py
 new file mode 100644
-index 0000000..6cc842f
 --- /dev/null
 +++ b/scripts/validation/certify_host.py
-@@ -0,0 +1,345 @@
+@@ -0,0 +1,363 @@
 +"""Automated host acceptance using disposable resources, never developer LOCAL data.
 +
 +Run with the freshly installed repository .venv Python 3.12 and PYTHONPATH=scripts.
@@ -1181,7 +1669,9 @@ index 0000000..6cc842f
 +import urllib.error
 +from pathlib import Path
 +
-+from host_development import local_environment, local_providers
++from environment_config import schema
++from environment_setup import text as env_text
++from host_development import local_environment, local_providers, private_write
 +from http_client import request
 +from test_ownership import verify_host_session
 +from workflow import ROOT, assert_absent, fresh, install_signals, inventory, run, wait_ready
@@ -1217,7 +1707,7 @@ index 0000000..6cc842f
 +
 +def certify_session(signum):
 +    sessions = ROOT / ".host-sessions"
-+    before = set(sessions.glob("*/test.env"))
++    before = set(sessions.glob("*/manifest.json"))
 +    with tempfile.TemporaryDirectory() as directory:
 +        log_path = Path(directory) / "owner.log"
 +        with log_path.open("w") as output:
@@ -1235,12 +1725,15 @@ index 0000000..6cc842f
 +                    if child.poll() is not None or time.monotonic() > deadline:
 +                        raise AssertionError("TEST owner failed: " + log_path.read_text())
 +                    time.sleep(0.2)
-+                paths = set(sessions.glob("*/test.env")) - before
++                paths = set(sessions.glob("*/manifest.json")) - before
 +                assert len(paths) == 1
 +                path = paths.pop()
 +                env = {
 +                    **clean_env(),
-+                    **dict(line.split("=", 1) for line in path.read_text().splitlines()),
++                    **json.loads(path.read_text())["urls"],
++                    "TEST_SESSION_MANIFEST": str(path),
++                    "TEST_DATABASE_DISPOSABLE": "1",
++                    "TEST_REDIS_DISPOSABLE": "1",
 +                }
 +                manifest = verify_host_session(env)
 +                project = manifest["project"]
@@ -1257,7 +1750,7 @@ index 0000000..6cc842f
 +                            "tests/integration/migrations/test_schema.py",
 +                            "tests/integration/infra/caches/test_redis.py",
 +                        ],
-+                        env=env,
++                        env=clean_env(),
 +                    )
 +                for key in ("TEST_DATABASE_URL", "TEST_REDIS_URL"):
 +                    bad = {**env, key: env[key] + "wrong"}
@@ -1324,6 +1817,9 @@ index 0000000..6cc842f
 +        json.loads(data)
 +        assert str(ROOT) not in data and ".host-sessions/" not in data
 +    baseline = inventory()
++    from validation.certify_environment import certify_environment
++
++    certify_environment()
 +    stack = fresh("local")
 +    for key in ("LOCAL_POSTGRES_PORT", "LOCAL_REDIS_PORT", "HOST_APP_PORT"):
 +        stack.settings[key] = free_port()
@@ -1331,15 +1827,27 @@ index 0000000..6cc842f
 +    child = None
 +    try:
 +        with tempfile.TemporaryDirectory() as directory:
-+            path = ROOT / ".env.host.local"
++            path = ROOT / ".env.local"
 +            missing = run(
 +                [sys.executable, "src/main.py"], env=clean_env(), capture=True, check=False
 +            )
-+            assert missing.returncode and "LOCAL host configuration is missing" in missing.stderr
++            assert missing.returncode and "LOCAL configuration is missing" in missing.stderr
 +            assert "Traceback" not in missing.stderr
-+            local_providers(stack, host_path=path)
++            machine_values = schema.machine(
++                {
++                    "POSTGRES_PASSWORD": stack.settings["POSTGRES_PASSWORD"],
++                    "DEV_POSTGRES_PASSWORD": "unused_certificate_password",
++                    "LOCAL_APP_PORT": stack.settings["APP_PORT"],
++                    **{
++                        k: stack.settings[k]
++                        for k in ("HOST_APP_PORT", "LOCAL_POSTGRES_PORT", "LOCAL_REDIS_PORT")
++                    },
++                }
++            )
++            private_write(path, env_text(machine_values))
++            local_providers(stack)
 +            before = path.read_bytes()
-+            local_providers(stack, host_path=path)
++            local_providers(stack)
 +            assert path.read_bytes() == before and path.stat().st_mode & 0o777 == 0o600
 +            assert not stack.compose("ps", "-q", "app", capture=True).stdout.strip()
 +            # Recreating a container with changed config must not pretend to rotate
@@ -1349,12 +1857,10 @@ index 0000000..6cc842f
 +            stack.compose("rm", "-f", "postgres")
 +            stack.settings["POSTGRES_PASSWORD"] = "deliberately_wrong_password"
 +            stack.process_env["POSTGRES_PASSWORD"] = "deliberately_wrong_password"
-+            wrong_path = Path(directory) / ".env.host.wrong"
 +            try:
-+                local_providers(stack, host_path=wrong_path)
++                local_providers(stack)
 +            except RuntimeError as exc:
 +                assert "authentication failed" in str(exc)
-+                assert not wrong_path.exists()
 +            else:
 +                raise AssertionError(
 +                    "Changed config falsely accepted as rotated volume credentials"
@@ -1364,7 +1870,7 @@ index 0000000..6cc842f
 +                stack.process_env["POSTGRES_PASSWORD"] = password
 +                stack.compose("stop", "postgres")
 +                stack.compose("rm", "-f", "postgres")
-+            local_providers(stack, host_path=path)
++            local_providers(stack)
 +            env = {**clean_env(), **local_environment(stack)}
 +            from redis import Redis
 +            from sqlalchemy import create_engine, text
@@ -1456,7 +1962,7 @@ index 0000000..6cc842f
 +                )
 +                assert refused.returncode and "LOCAL PostgreSQL is unavailable" in refused.stderr
 +                assert "Traceback" not in refused.stderr and password not in refused.stderr
-+                local_providers(stack, host_path=path)
++                local_providers(stack)
 +                stack.compose("stop", "redis")
 +                child = subprocess.Popen(
 +                    [sys.executable, "main.py"],
@@ -1483,7 +1989,7 @@ index 0000000..6cc842f
 +            stack.start()
 +            for stop in (False, True):
 +                try:
-+                    local_providers(stack, stop=stop, host_path=path)
++                    local_providers(stack, stop=stop)
 +                except RuntimeError as exc:
 +                    assert "active" in str(exc)
 +                else:
@@ -1509,52 +2015,143 @@ index 0000000..6cc842f
 +    install_signals()
 +    certify_isolated_host()
 diff --git a/scripts/workflow.py b/scripts/workflow.py
-index 3dc8d56..440dc1c 100644
 --- a/scripts/workflow.py
 +++ b/scripts/workflow.py
-@@ -3,0 +4 @@ import argparse
+@@ -3,0 +4 @@
 +import json
-@@ -24,0 +26,4 @@ RUNTIME   make run ENV=local|dev     Start and wait for exactly 200 Healthy
-+IDE       make providers ENV=local  Healthy LOCAL providers + private host env; no app/migration
+@@ -17,0 +19,3 @@
++from environment_config import schema
++from environment_setup import setup_files
++
+@@ -22 +26 @@
+-          make setup                 Verify tools; create missing private env files
++          make setup                 Create/migrate private .env.local + .env.test
+@@ -24,0 +29,4 @@
++IDE       make providers ENV=local  Healthy LOCAL providers + canonical config; no app/migration
 +          make providers-stop ENV=local Stop providers only; preserve data
 +          make test-providers        Foreground owned disposable host TEST session
 +          make certify-host PYTHON=.venv/bin/python  Automated host acceptance (no IDE UI)
-@@ -83,4 +88,2 @@ def setup(directory=ROOT):
+@@ -83,4 +91,2 @@
 -    if sys.version_info < (3, 12):  # noqa: UP036 - host prerequisite check
 -        raise RuntimeError(
 -            "Python 3.12 or newer is required for host orchestration; image uses 3.12"
 -        )
 +    if sys.version_info[:2] != (3, 12):
 +        raise RuntimeError("Python 3.12 is required for host orchestration and the application")
-@@ -110,2 +113,13 @@ def read_settings(path):
+@@ -89,2 +95,24 @@
+-    for env, port in (("local", 5100), ("dev", 5200)):
+-        path = directory / f".env.{env}"
++
++    def has_volume(mode):
++        label = "label=com.docker.compose.project=" + schema.SERVICE + "-" + mode
++        return bool(
++            run(["docker", "volume", "ls", "-q", "--filter", label], capture=True).stdout.strip()
++        )
++
++    def verify(mode, values):
++        selected = {
++            **values,
++            "POSTGRES_PASSWORD": values[
++                "POSTGRES_PASSWORD" if mode == "local" else "DEV_POSTGRES_PASSWORD"
++            ],
++            "APP_PORT": values[mode.upper() + "_APP_PORT"],
++        }
++        stack = Stack(mode, settings=selected)
++        if stack.compose("ps", "--status", "running", "-q", "app", capture=True).stdout.strip():
++            raise RuntimeError("Stop the full app before migrating private configuration.")
++        existed = bool(stack.compose("ps", "-a", "-q", "postgres", capture=True).stdout.strip())
++        was_running = bool(
++            stack.compose(
++                "ps", "--status", "running", "-q", "postgres", capture=True
++            ).stdout.strip()
++        )
+@@ -92,26 +120,46 @@
+-            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+-        except FileExistsError:
+-            print(f"Preserved existing {path.name}")
+-            continue
+-        with os.fdopen(fd, "w") as stream:
+-            stream.write(f"POSTGRES_PASSWORD={secrets.token_hex(24)}\nAPP_PORT={port}\n")
+-        print(f"Created private {path.name}")
+-    print("Next: make build ENV=local; make migrate ENV=local; make run ENV=local")
+-
+-
+-def read_settings(path):
+-    if not path.exists():
+-        raise RuntimeError("Missing environment file; run make setup")
+-    values = {}
+-    for line in path.read_text().splitlines():
+-        line = line.strip()
+-        if line and not line.startswith("#"):
+-            key, sep, value = line.partition("=")
 -            if not sep or key not in {"POSTGRES_PASSWORD", "APP_PORT"}:
 -                raise RuntimeError("Environment file permits only POSTGRES_PASSWORD and APP_PORT")
-+            if (
-+                not sep
-+                or key
-+                not in {
-+                    "POSTGRES_PASSWORD",
-+                    "APP_PORT",
-+                    "HOST_APP_PORT",
-+                    "LOCAL_POSTGRES_PORT",
-+                    "LOCAL_REDIS_PORT",
-+                }
-+                or key in values
-+            ):
-+                raise RuntimeError("Environment file contains an unknown or duplicate key")
-@@ -115,2 +129,5 @@ def read_settings(path):
+-            values[key] = value
+-    if not re.fullmatch(r"[a-zA-Z0-9_-]{16,128}", values.get("POSTGRES_PASSWORD", "")):
+-        raise RuntimeError("POSTGRES_PASSWORD must be 16–128 URL-safe characters")
 -    if not values.get("APP_PORT", "").isdigit() or not 1 <= int(values["APP_PORT"]) <= 65535:
 -        raise RuntimeError("APP_PORT must be a valid port number")
-+    for key in ("APP_PORT", "HOST_APP_PORT", "LOCAL_POSTGRES_PORT", "LOCAL_REDIS_PORT"):
-+        if key == "APP_PORT" or key in values:
-+            port = values.get(key, "")
-+            if not port.isascii() or not port.isdecimal() or not 1 <= int(port) <= 65535:
-+                raise RuntimeError(f"{key} must be a valid port number")
-@@ -134,0 +152,3 @@ class Stack:
+-    return values
++            stack.compose("up", "-d", "--wait", "--wait-timeout", "60", "postgres")
++            result = stack.compose(
++                "exec",
++                "-T",
++                "-e",
++                "PGPASSWORD=" + selected["POSTGRES_PASSWORD"],
++                "postgres",
++                "psql",
++                "-h",
++                "postgres",
++                "-U",
++                "goalstats",
++                "-d",
++                schema.DATABASE + "_" + mode,
++                "-At",
++                "-c",
++                "SELECT 1",
++                capture=True,
++                check=False,
++            )
++            if result.returncode or result.stdout.strip() != "1":
++                raise RuntimeError(
++                    "Existing PostgreSQL authentication failed; configuration preserved."
++                )
++        finally:
++            if not was_running:
++                stack.compose("stop", "postgres")
++                if not existed:
++                    stack.compose("rm", "-f", "postgres")
++
++    setup_files(directory, has_volume=has_volume, verify=verify)
++    print("Next: make providers ENV=local; make build ENV=local; make migrate ENV=local")
++
++
++def read_settings(path, mode="local"):
++    try:
++        values = schema.load_machine(path)
++    except schema.EnvironmentError as exc:
++        raise RuntimeError(str(exc)) from None
++    return {
++        **values,
++        "POSTGRES_PASSWORD": values[
++            "POSTGRES_PASSWORD" if mode == "local" else "DEV_POSTGRES_PASSWORD"
++        ],
++        "APP_PORT": values[mode.upper() + "_APP_PORT"],
++    }
+@@ -131 +179,3 @@
+-        self.settings = settings if settings is not None else read_settings(ROOT / f".env.{env}")
++        self.settings = (
++            settings if settings is not None else read_settings(ROOT / ".env.local", env)
++        )
+@@ -133,0 +184,3 @@
++        self.process_env.update(
++            schema.test_policy(ROOT) if env == "test" else schema.POLICY_DEFAULTS
++        )
+@@ -134,0 +188,3 @@
 +        # Optional LOCAL settings must never come from ambient shell variables.
 +        for key, default in (("LOCAL_POSTGRES_PORT", "55432"), ("LOCAL_REDIS_PORT", "56379")):
 +            self.process_env[key] = self.settings.get(key, default)
-@@ -156,12 +176,48 @@ class Stack:
+@@ -156,12 +212,48 @@
 -            return self.compose(
 -                "run",
 -                "--rm",
@@ -1615,7 +2212,7 @@ index 3dc8d56..440dc1c 100644
 +                    env=self.process_env,
 +                    **kwargs,
 +                )
-@@ -227 +283,6 @@ def fresh(env):
+@@ -227 +319,6 @@
 -        settings={"POSTGRES_PASSWORD": secrets.token_hex(24), "APP_PORT": str(port)},
 +        settings={
 +            "POSTGRES_PASSWORD": secrets.token_hex(24),
@@ -1623,7 +2220,10 @@ index 3dc8d56..440dc1c 100644
 +            "LOCAL_POSTGRES_PORT": "0",
 +            "LOCAL_REDIS_PORT": "0",
 +        },
-@@ -350,0 +412,10 @@ def main():
+@@ -331 +428 @@
+-        read_settings(ROOT / f".env.{env}")
++        read_settings(ROOT / ".env.local", env)
+@@ -350,0 +448,10 @@
 +    elif command in {"providers", "providers-stop"}:
 +        if args.env != "local":
 +            raise RuntimeError("Host providers require ENV=local")
@@ -1634,21 +2234,20 @@ index 3dc8d56..440dc1c 100644
 +        from host_development import test_providers
 +
 +        test_providers()
-@@ -362,0 +434,4 @@ def main():
+@@ -362,0 +470,4 @@
 +    elif command == "certify-host":
 +        from validation.certify_host import certify_host
 +
 +        certify_host()
 diff --git a/src/main.py b/src/main.py
-index fecad8a..3752b81 100644
 --- a/src/main.py
 +++ b/src/main.py
-@@ -3,0 +4 @@ import logging
+@@ -3,0 +4 @@
 +import sys
-@@ -21 +22 @@ from schemas.infra.problem import ProblemSchema
+@@ -21 +22 @@
 -from settings.base import Settings
 +from settings.base import ConfigurationError, Settings
-@@ -82,0 +84,26 @@ def create_app(config: Mapping[str, str] | None = None) -> Flask:
+@@ -82,0 +84,26 @@
 +
 +
 +def development_main() -> None:
@@ -1675,34 +2274,383 @@ index fecad8a..3752b81 100644
 +        development_main()
 +    except ConfigurationError as exc:
 +        sys.exit(str(exc))
+diff --git a/src/settings/base.py b/src/settings/base.py
+--- a/src/settings/base.py
++++ b/src/settings/base.py
+@@ -10,0 +11,2 @@
++
++from settings import environment
+@@ -38,7 +40,4 @@
+-    match value.strip().lower():
+-        case "true" | "1":
+-            return True
+-        case "false" | "0":
+-            return False
+-        case _:
+-            raise ConfigurationError("OPENAPI_ENABLED must be true, false, 1 or 0.")
++    try:
++        return environment.boolean(value)
++    except environment.EnvironmentError as exc:
++        raise ConfigurationError(str(exc)) from None
+@@ -67,6 +66,3 @@
+-        result = int(value)
+-        if not 1 <= result <= 86400:
+-            raise ValueError
+-        return result
+-    except ValueError:
+-        raise ConfigurationError("CACHE_TTL_SECONDS must be an integer from 1 to 86400.") from None
++        return environment.cache_ttl(value)
++    except environment.EnvironmentError as exc:
++        raise ConfigurationError(str(exc)) from None
+@@ -97,3 +93,6 @@
+-        level = source.get("LOG_LEVEL", "INFO").strip().upper()
+-        if level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
+-            raise ConfigurationError("LOG_LEVEL must be DEBUG, INFO, WARNING, ERROR or CRITICAL.")
++        try:
++            level = environment.log_level(
++                source.get("LOG_LEVEL", environment.POLICY_DEFAULTS["LOG_LEVEL"])
++            )
++        except environment.EnvironmentError as exc:
++            raise ConfigurationError(str(exc)) from None
+@@ -108 +107,3 @@
+-            cache_ttl_seconds=cache_ttl(source.get("CACHE_TTL_SECONDS", "300")),
++            cache_ttl_seconds=cache_ttl(
++                source.get("CACHE_TTL_SECONDS", environment.POLICY_DEFAULTS["CACHE_TTL_SECONDS"])
++            ),
+diff --git a/src/settings/environment.py b/src/settings/environment.py
+new file mode 100644
+--- /dev/null
++++ b/src/settings/environment.py
+@@ -0,0 +1,149 @@
++"""Canonical private machine configuration and endpoint-free TEST policy (stdlib only)."""
++
++import os
++import re
++import stat
++from collections.abc import Mapping
++from pathlib import Path
++
++SERVICE = "goalstats-template-py"
++DATABASE = "goalstats_template_py"
++POLICY_DEFAULTS = {"LOG_LEVEL": "INFO", "OPENAPI_ENABLED": "true", "CACHE_TTL_SECONDS": "300"}
++PORT_DEFAULTS = {
++    "HOST_APP_PORT": "5300",
++    "LOCAL_APP_PORT": "5100",
++    "DEV_APP_PORT": "5200",
++    "LOCAL_POSTGRES_PORT": "55432",
++    "LOCAL_REDIS_PORT": "56379",
++}
++LOCAL_KEYS = (
++    frozenset(PORT_DEFAULTS)
++    | frozenset(POLICY_DEFAULTS)
++    | {"POSTGRES_PASSWORD", "DEV_POSTGRES_PASSWORD"}
++)
++
++
++class EnvironmentError(ValueError):
++    """Credential-free configuration failure."""
++
++
++def read_private(path: Path, keys: frozenset[str]) -> dict[str, str]:
++    try:
++        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
++        with os.fdopen(fd, encoding="utf-8") as stream:
++            info = os.fstat(stream.fileno())
++            if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
++                raise EnvironmentError(
++                    "Configuration must be a private regular file owned by this user."
++                )
++            content = stream.read()
++    except FileNotFoundError:
++        raise EnvironmentError(
++            "LOCAL configuration is missing. Run make setup, then make providers ENV=local."
++        ) from None
++    except (OSError, UnicodeError):
++        raise EnvironmentError(
++            "Cannot read private configuration; symlinks are forbidden."
++        ) from None
++    result: dict[str, str] = {}
++    for line in content.splitlines():
++        if not line or line.startswith("#"):
++            continue
++        key, separator, value = line.partition("=")
++        if not separator or key not in keys or key in result or "\x00" in value:
++            raise EnvironmentError("Configuration requires unique supported KEY=value lines.")
++        result[key] = value
++    return result
++
++
++def log_level(value: str) -> str:
++    level = value.strip().upper()
++    if level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
++        raise EnvironmentError("LOG_LEVEL must be DEBUG, INFO, WARNING, ERROR or CRITICAL.")
++    return level
++
++
++def boolean(value: str) -> bool:
++    match value.strip().lower():
++        case "true" | "1":
++            return True
++        case "false" | "0":
++            return False
++        case _:
++            raise EnvironmentError("OPENAPI_ENABLED must be true, false, 1 or 0.")
++
++
++def cache_ttl(value: str) -> int:
++    try:
++        result = int(value)
++        if not 1 <= result <= 86400:
++            raise ValueError
++        return result
++    except ValueError:
++        raise EnvironmentError("CACHE_TTL_SECONDS must be an integer from 1 to 86400.") from None
++
++
++def policy(values: Mapping[str, str]) -> dict[str, str]:
++    if set(values) - POLICY_DEFAULTS.keys():
++        raise EnvironmentError(
++            "TEST policy contains unsupported keys; provider configuration is forbidden."
++        )
++    result = {**POLICY_DEFAULTS, **values}
++    result["LOG_LEVEL"] = log_level(result["LOG_LEVEL"])
++    boolean(result["OPENAPI_ENABLED"])
++    cache_ttl(result["CACHE_TTL_SECONDS"])
++    return result
++
++
++def test_policy(root: Path) -> dict[str, str]:
++    path = root / ".env.test"
++    return policy(
++        read_private(path, frozenset(POLICY_DEFAULTS)) if path.exists() or path.is_symlink() else {}
++    )
++
++
++def machine(values: Mapping[str, str]) -> dict[str, str]:
++    if set(values) - LOCAL_KEYS:
++        raise EnvironmentError(
++            "Unsupported LOCAL machine key; run make setup to migrate legacy configuration."
++        )
++    result = {
++        **PORT_DEFAULTS,
++        **policy({k: v for k, v in values.items() if k in POLICY_DEFAULTS}),
++        **values,
++    }
++    for key in ("POSTGRES_PASSWORD", "DEV_POSTGRES_PASSWORD"):
++        if not re.fullmatch(r"[a-zA-Z0-9_-]{16,128}", result.get(key, "")):
++            raise EnvironmentError(
++                f"{key} must be 16–128 URL-safe characters; preserve existing credentials."
++            )
++    for key in PORT_DEFAULTS:
++        value = result[key]
++        if not value.isascii() or not value.isdecimal() or not 1 <= int(value) <= 65535:
++            raise EnvironmentError(f"{key} must be a valid port number.")
++    if len({int(result[k]) for k in PORT_DEFAULTS}) != len(PORT_DEFAULTS):
++        raise EnvironmentError("Machine app/provider ports must be distinct.")
++    return result
++
++
++def load_machine(path: Path) -> dict[str, str]:
++    return machine(read_private(path, LOCAL_KEYS))
++
++
++def application(values: Mapping[str, str], mode: str, *, host: bool = False) -> dict[str, str]:
++    if mode not in {"local", "dev"} or (host and mode != "local"):
++        raise EnvironmentError(
++            "Machine configuration supports LOCAL/DEV only; host execution is LOCAL."
++        )
++    password = values["POSTGRES_PASSWORD" if mode == "local" else "DEV_POSTGRES_PASSWORD"]
++    pg = "127.0.0.1:" + values["LOCAL_POSTGRES_PORT"] if host else "postgres:5432"
++    redis = "127.0.0.1:" + values["LOCAL_REDIS_PORT"] if host else "redis:6379"
++    return {
++        **policy({k: v for k, v in values.items() if k in POLICY_DEFAULTS}),
++        "APP_ENV": mode,
++        "DATABASE_URL": f"postgresql+psycopg://goalstats:{password}@{pg}/{DATABASE}_{mode}",
++        "REDIS_URL": f"redis://{redis}/0",
++        "CACHE_KEY_PREFIX": f"{SERVICE}:{mode}:v1",
++        "HOST_APP_PORT": values["HOST_APP_PORT"],
++        "FLASK_DEBUG": "0",
++    }
+diff --git a/src/settings/host.py b/src/settings/host.py
+new file mode 100644
+--- /dev/null
++++ b/src/settings/host.py
+@@ -0,0 +1,116 @@
++"""Explicit direct-script LOCAL configuration; never used by the general factory."""
++
++import ipaddress
++import os
++import socket
++from collections.abc import Mapping
++from pathlib import Path
++from typing import cast
++from urllib.parse import urlsplit
++
++from flask import Flask
++from sqlalchemy import text
++from sqlalchemy.exc import SQLAlchemyError
++
++from infra.resources.db import Database, is_ready
++from infra.resources.redis import RedisCache
++from settings.base import ConfigurationError, Settings
++from settings.environment import (
++    LOCAL_KEYS,
++    EnvironmentError,
++    application,
++    load_machine,
++    read_private,
++)
++
++HOST_FILE = Path(__file__).resolve().parents[2] / ".env.local"
++KEYS = frozenset(
++    {
++        "APP_ENV",
++        "DATABASE_URL",
++        "REDIS_URL",
++        "CACHE_KEY_PREFIX",
++        "CACHE_TTL_SECONDS",
++        "LOG_LEVEL",
++        "OPENAPI_ENABLED",
++        "HOST_APP_PORT",
++        "FLASK_DEBUG",
++    }
++)
++
++
++def read_host_file(path: Path) -> dict[str, str]:
++    """Read only canonical private machine configuration."""
++    try:
++        return read_private(path, LOCAL_KEYS)
++    except EnvironmentError as exc:
++        raise ConfigurationError(str(exc)) from None
++
++
++def loopback(host: str | None) -> bool:
++    if host == "localhost":
++        return True
++    try:
++        return ipaddress.ip_address(host or "").is_loopback
++    except ValueError:
++        return False
++
++
++def load_host_config(environ: Mapping[str, str] | None = None) -> dict[str, str]:
++    source = os.environ if environ is None else environ
++    if "APP_ENV" in source and source["APP_ENV"].strip().lower() != "local":
++        raise ConfigurationError(
++            "Direct src/main.py execution supports LOCAL only. "
++            "Remove the conflicting APP_ENV setting."
++        )
++    try:
++        values = application(load_machine(HOST_FILE), "local", host=True)
++    except EnvironmentError as exc:
++        raise ConfigurationError(str(exc)) from None
++    values.update({key: source[key] for key in KEYS if key in source})
++    values.update(APP_ENV="local", FLASK_DEBUG="0")
++    settings = Settings.load(values)
++    if not loopback(settings.database_url.host):
++        raise ConfigurationError("DATABASE_URL for LOCAL host development must use loopback.")
++    if settings.redis_url and not loopback(urlsplit(settings.redis_url).hostname):
++        raise ConfigurationError("REDIS_URL for LOCAL host development must use loopback.")
++    port = values["HOST_APP_PORT"]
++    if not port.isascii() or not port.isdecimal() or not 1 <= int(port) <= 65535:
++        raise ConfigurationError("HOST_APP_PORT must be an integer from 1 to 65535.")
++    return values
++
++
++def check_app_port(port: int) -> None:
++    with socket.socket() as probe:
++        try:
++            probe.bind(("127.0.0.1", port))
++        except OSError:
++            raise ConfigurationError(
++                f"LOCAL application port {port} is unavailable. Stop the other application "
++                "or choose HOST_APP_PORT."
++            ) from None
++
++
++def diagnose_providers(app: Flask) -> None:
++    """Bounded reads only. Schema readiness and cache fallback retain their policies."""
++    database = cast(Database, app.extensions["goalstats_database"])
++    cache = cast(RedisCache, app.extensions["goalstats_cache"])
++    settings = cast(Settings, app.extensions["goalstats_settings"])
++    try:
++        with database.engine.connect() as connection:
++            connection.execute(text("SELECT 1"))
++    except SQLAlchemyError:
++        database.dispose()
++        raise ConfigurationError(
++            "LOCAL PostgreSQL is unavailable. Run make providers ENV=local "
++            "and verify the existing configuration."
++        ) from None
++    if not is_ready(database):
++        app.logger.warning(
++            "LOCAL database is not ready. If migrations are pending, run make migrate ENV=local."
++        )
++    if not cache.ready(settings.cache_key_prefix):
++        app.logger.warning(
++            "LOCAL Redis is unavailable; database fallback remains active. "
++            "Run make providers ENV=local."
++        )
 diff --git a/tests/fixtures/database.py b/tests/fixtures/database.py
-index e6462f3..62f3e88 100644
 --- a/tests/fixtures/database.py
 +++ b/tests/fixtures/database.py
-@@ -10,0 +11 @@ from sqlalchemy import text
-+from test_ownership import verify_test_providers
-@@ -22,0 +24,4 @@ def postgres_config() -> dict[str, str]:
+@@ -1 +0,0 @@
+-import os
+@@ -10,0 +10 @@
++from test_ownership import owned_test_config
+@@ -18,5 +18,7 @@
+-    value = os.environ.get("TEST_DATABASE_URL")
+-    if not value:
+-        pytest.skip("TEST_DATABASE_URL is not set; provision an isolated PostgreSQL test database.")
+-    if os.environ.get("TEST_DATABASE_DISPOSABLE") != "1":
+-        pytest.fail("TEST_DATABASE_DISPOSABLE=1 is required for provider tests.")
 +    try:
-+        verify_test_providers()
++        owned = owned_test_config()
 +    except RuntimeError as exc:
 +        pytest.fail(str(exc), pytrace=False)
++    value = owned.get("TEST_DATABASE_URL")
++    if not value or owned.get("TEST_DATABASE_DISPOSABLE") != "1":
++        pytest.fail("Verified disposable TEST configuration is required.", pytrace=False)
+@@ -29 +31,12 @@
+-    config = {"APP_ENV": "test", "DATABASE_URL": value, "OPENAPI_ENABLED": "true"}
++    config = {
++        "APP_ENV": "test",
++        "DATABASE_URL": value,
++        **{
++            key: owned.get(key, default)
++            for key, default in {
++                "OPENAPI_ENABLED": "true",
++                "LOG_LEVEL": "INFO",
++                "CACHE_TTL_SECONDS": "300",
++            }.items()
++        },
++    }
 diff --git a/tests/fixtures/redis.py b/tests/fixtures/redis.py
-index 5b22bb8..eac9217 100644
 --- a/tests/fixtures/redis.py
 +++ b/tests/fixtures/redis.py
-@@ -5,0 +6 @@ from redis import Redis
-+from test_ownership import verify_test_providers
-@@ -14,0 +16,4 @@ def redis_url():
+@@ -1 +0,0 @@
+-import os
+@@ -5,0 +5 @@
++from test_ownership import owned_test_config
+@@ -10,5 +10,7 @@
+-    value = os.environ.get("TEST_REDIS_URL")
+-    if not value:
+-        pytest.skip("TEST_REDIS_URL is not set; provision isolated Redis.")
+-    if os.environ.get("TEST_REDIS_DISPOSABLE") != "1":
+-        pytest.fail("TEST_REDIS_DISPOSABLE=1 is required.")
 +    try:
-+        verify_test_providers()
++        owned = owned_test_config()
 +    except RuntimeError as exc:
 +        pytest.fail(str(exc), pytrace=False)
++    value = owned.get("TEST_REDIS_URL")
++    if not value or owned.get("TEST_REDIS_DISPOSABLE") != "1":
++        pytest.fail("Verified disposable TEST configuration is required.", pytrace=False)
 diff --git a/tests/unit/test_development_entrypoint.py b/tests/unit/test_development_entrypoint.py
 new file mode 100644
-index 0000000..afdc5cd
 --- /dev/null
 +++ b/tests/unit/test_development_entrypoint.py
-@@ -0,0 +1,218 @@
+@@ -0,0 +1,215 @@
 +"""Direct-only configuration, diagnostics, and single-process execution."""
 +
 +import importlib
@@ -1719,11 +2667,8 @@ index 0000000..afdc5cd
 +
 +@pytest.fixture
 +def host_file(tmp_path, monkeypatch):
-+    path = tmp_path / ".env.host.local"
-+    path.write_text(
-+        "APP_ENV=local\nDATABASE_URL=postgresql+psycopg://u:secret@127.0.0.1:55432/db\n"
-+        "REDIS_URL=redis://127.0.0.1:56379/0\n"
-+    )
++    path = tmp_path / ".env.local"
++    path.write_text("POSTGRES_PASSWORD=abcdefghijklmnop\nDEV_POSTGRES_PASSWORD=ponmlkjihgfedcba\n")
 +    path.chmod(0o600)
 +    monkeypatch.setattr(host, "HOST_FILE", path)
 +    for key in host.KEYS:
@@ -1746,7 +2691,7 @@ index 0000000..afdc5cd
 +    factory.assert_called_once()
 +    values = factory.call_args.args[0]
 +    assert values["APP_ENV"] == "local" and values["FLASK_DEBUG"] == "0"
-+    assert values["DATABASE_URL"].endswith(":55432/db")
++    assert values["DATABASE_URL"].endswith(":55432/goalstats_template_py_local")
 +    diagnostics.assert_called_once_with(factory.return_value)
 +    factory.return_value.run.assert_called_once_with(
 +        host="127.0.0.1",
@@ -1772,14 +2717,14 @@ index 0000000..afdc5cd
 +def test_file_location_does_not_depend_on_cwd(host_file, tmp_path, monkeypatch, cwd):
 +    directory = tmp_path / cwd
 +    directory.mkdir()
-+    (directory / ".env.host.local").write_text("must not load cwd file")
++    (directory / ".env.local").write_text("must not load cwd file")
 +    monkeypatch.chdir(directory)
 +    assert host.load_host_config({})["APP_ENV"] == "local"
 +
 +
 +def test_missing_file_is_actionable(host_file):
 +    host_file.unlink()
-+    with pytest.raises(ConfigurationError, match="Run make providers ENV=local"):
++    with pytest.raises(ConfigurationError, match="make providers ENV=local"):
 +        host.load_host_config({})
 +
 +
@@ -1826,9 +2771,9 @@ index 0000000..afdc5cd
 +
 +def test_literal_values_are_not_evaluated_or_interpolated(host_file):
 +    with host_file.open("a") as stream:
-+        stream.write("CACHE_KEY_PREFIX=${HOME}\n")
-+    assert host.read_host_file(host_file)["CACHE_KEY_PREFIX"] == "${HOME}"
-+    with pytest.raises(ConfigurationError, match="CACHE_KEY_PREFIX"):
++        stream.write("LOG_LEVEL=${HOME}\n")
++    assert host.read_host_file(host_file)["LOG_LEVEL"] == "${HOME}"
++    with pytest.raises(ConfigurationError, match="LOG_LEVEL"):
 +        host.load_host_config({})
 +
 +
@@ -1840,7 +2785,7 @@ index 0000000..afdc5cd
 +    assert config["OPENAPI_ENABLED"] == "true"
 +    assert config["LOG_LEVEL"] == "DEBUG"
 +    assert config["REDIS_URL"] == ""
-+    assert "CACHE_KEY_PREFIX" not in config  # Existing Settings owns identity/defaults.
++    assert config["CACHE_KEY_PREFIX"] == "goalstats-template-py:local:v1"
 +
 +
 +@pytest.mark.parametrize(
@@ -1865,8 +2810,8 @@ index 0000000..afdc5cd
 +
 +
 +def test_missing_database_refused(host_file):
-+    host_file.write_text("APP_ENV=local\n")
-+    with pytest.raises(ConfigurationError, match="DATABASE_URL"):
++    host_file.write_text("DEV_POSTGRES_PASSWORD=abcdefghijklmnop\n")
++    with pytest.raises(ConfigurationError, match="POSTGRES_PASSWORD"):
 +        host.load_host_config({})
 +
 +
@@ -1921,143 +2866,3 @@ index 0000000..afdc5cd
 +    app.extensions["goalstats_database"].dispose()
 +    reader.assert_not_called()
 +    assert dict(os.environ) == before
-diff --git a/src/settings/host.py b/src/settings/host.py
-new file mode 100644
-index 0000000..f67e7da
---- /dev/null
-+++ b/src/settings/host.py
-@@ -0,0 +1,134 @@
-+"""Explicit direct-script LOCAL configuration; never used by the general factory."""
-+
-+import ipaddress
-+import os
-+import socket
-+import stat
-+from collections.abc import Mapping
-+from pathlib import Path
-+from typing import cast
-+from urllib.parse import urlsplit
-+
-+from flask import Flask
-+from sqlalchemy import text
-+from sqlalchemy.exc import SQLAlchemyError
-+
-+from infra.resources.db import Database, is_ready
-+from infra.resources.redis import RedisCache
-+from settings.base import ConfigurationError, Settings
-+
-+HOST_FILE = Path(__file__).resolve().parents[2] / ".env.host.local"
-+KEYS = frozenset(
-+    {
-+        "APP_ENV",
-+        "DATABASE_URL",
-+        "REDIS_URL",
-+        "CACHE_KEY_PREFIX",
-+        "CACHE_TTL_SECONDS",
-+        "LOG_LEVEL",
-+        "OPENAPI_ENABLED",
-+        "HOST_APP_PORT",
-+        "FLASK_DEBUG",
-+    }
-+)
-+
-+
-+def read_host_file(path: Path) -> dict[str, str]:
-+    """Read the generated literal KEY=value format without following symlinks."""
-+    try:
-+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-+        with os.fdopen(fd, encoding="utf-8") as stream:
-+            info = os.fstat(stream.fileno())
-+            if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
-+                raise ConfigurationError(
-+                    "LOCAL host configuration must be a private regular file owned by this user."
-+                )
-+            content = stream.read()
-+    except FileNotFoundError:
-+        raise ConfigurationError(
-+            "LOCAL host configuration is missing. Run make providers ENV=local."
-+        ) from None
-+    except (OSError, UnicodeError):
-+        raise ConfigurationError(
-+            "Cannot read private LOCAL host configuration; symlinks are not allowed."
-+        ) from None
-+    values: dict[str, str] = {}
-+    for line in content.splitlines():
-+        if not line or line.startswith("#"):
-+            continue
-+        key, separator, value = line.partition("=")
-+        if not separator or key not in KEYS or key in values or "\x00" in value:
-+            raise ConfigurationError(
-+                "Invalid LOCAL host configuration: use unique supported KEY=value lines."
-+            )
-+        values[key] = value
-+    if values.get("APP_ENV", "").strip().lower() != "local":
-+        raise ConfigurationError("LOCAL host configuration must specify APP_ENV=local.")
-+    return values
-+
-+
-+def loopback(host: str | None) -> bool:
-+    if host == "localhost":
-+        return True
-+    try:
-+        return ipaddress.ip_address(host or "").is_loopback
-+    except ValueError:
-+        return False
-+
-+
-+def load_host_config(environ: Mapping[str, str] | None = None) -> dict[str, str]:
-+    source = os.environ if environ is None else environ
-+    if "APP_ENV" in source and source["APP_ENV"].strip().lower() != "local":
-+        raise ConfigurationError(
-+            "Direct src/main.py execution supports LOCAL only. "
-+            "Remove the conflicting APP_ENV setting."
-+        )
-+    values = {"APP_ENV": "local", "OPENAPI_ENABLED": "true", "HOST_APP_PORT": "5300"}
-+    values.update(read_host_file(HOST_FILE))
-+    values.update({key: source[key] for key in KEYS if key in source})
-+    values.update(APP_ENV="local", FLASK_DEBUG="0")
-+    settings = Settings.load(values)
-+    if not loopback(settings.database_url.host):
-+        raise ConfigurationError("DATABASE_URL for LOCAL host development must use loopback.")
-+    if settings.redis_url and not loopback(urlsplit(settings.redis_url).hostname):
-+        raise ConfigurationError("REDIS_URL for LOCAL host development must use loopback.")
-+    port = values["HOST_APP_PORT"]
-+    if not port.isascii() or not port.isdecimal() or not 1 <= int(port) <= 65535:
-+        raise ConfigurationError("HOST_APP_PORT must be an integer from 1 to 65535.")
-+    return values
-+
-+
-+def check_app_port(port: int) -> None:
-+    with socket.socket() as probe:
-+        try:
-+            probe.bind(("127.0.0.1", port))
-+        except OSError:
-+            raise ConfigurationError(
-+                f"LOCAL application port {port} is unavailable. Stop the other application "
-+                "or choose HOST_APP_PORT."
-+            ) from None
-+
-+
-+def diagnose_providers(app: Flask) -> None:
-+    """Bounded reads only. Schema readiness and cache fallback retain their policies."""
-+    database = cast(Database, app.extensions["goalstats_database"])
-+    cache = cast(RedisCache, app.extensions["goalstats_cache"])
-+    settings = cast(Settings, app.extensions["goalstats_settings"])
-+    try:
-+        with database.engine.connect() as connection:
-+            connection.execute(text("SELECT 1"))
-+    except SQLAlchemyError:
-+        database.dispose()
-+        raise ConfigurationError(
-+            "LOCAL PostgreSQL is unavailable. Run make providers ENV=local "
-+            "and verify the existing configuration."
-+        ) from None
-+    if not is_ready(database):
-+        app.logger.warning(
-+            "LOCAL database is not ready. If migrations are pending, run make migrate ENV=local."
-+        )
-+    if not cache.ready(settings.cache_key_prefix):
-+        app.logger.warning(
-+            "LOCAL Redis is unavailable; database fallback remains active. "
-+            "Run make providers ENV=local."
-+        )

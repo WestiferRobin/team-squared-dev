@@ -2,3 +2,4 @@
 artifacts/
 infra/.env.local
 infra/.env.dev
+infra/.config-state/

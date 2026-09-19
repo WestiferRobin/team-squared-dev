@@ -3,6 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 root=$PWD
+source scripts/infra-config.sh
 fail() { echo "Workspace error: $*" >&2; exit 2; }
 git_safe() { git -c submodule.recurse=false -c fetch.recurseSubmodules=false "$@"; }
 
@@ -158,11 +159,7 @@ main() {
   if [[ "$action" == setup ]]; then
     materialize "$root"
     inspect_tree "$root" parent HEAD
-    for selected in local dev; do
-      file="infra/.env.$selected"
-      if [[ -e "$file" || -L "$file" ]]; then echo "Preserved $file"
-      else (set -o noclobber; cat "infra/.env.$selected.example" > "$file"); echo "Created $file"; fi
-    done
+    infra_setup
   else
     trap on_exit EXIT
     if [[ "$resume" == 0 ]]; then

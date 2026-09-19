@@ -218,7 +218,7 @@ class IDETransformer(unittest.TestCase):
             b"goalstats_player_stats_py_local", out["scripts/host_development.py"][1]
         )
         self.assertIn(
-            b"goalstats-player-stats-py:local:v1", out["scripts/host_development.py"][1]
+            b'SERVICE = "goalstats-player-stats-py"', out["src/settings/environment.py"][1]
         )
         self.assertIn(
             b"goalstats-player-stats-py-test-[a-f0-9]{24}",

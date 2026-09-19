@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 root=$PWD
+source scripts/infra-config.sh
 action=${1:?Missing action}
 mode=${2-local}
 project=${3:-team-squared-$mode}
@@ -20,19 +21,9 @@ case "$project" in team-squared-$mode|team-squared-$mode-*) ;; *) fail "PROJECT 
 [[ "$project" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || fail 'Invalid project name.'
 
 load_compose() {
-  if [[ "$mode" == local ]]; then FRONTEND_PORT=33000; else FRONTEND_PORT=33001; fi
-  local file="infra/.env.$mode" line key value
-  if [[ -f "$file" ]]; then
-    while IFS= read -r line || [[ -n "$line" ]]; do
-      line=${line%$'\r'}
-      [[ "$line" =~ ^[[:space:]]*(#.*)?$ ]] && continue
-      [[ "$line" == *=* ]] || fail "Invalid assignment in $file"
-      key=${line%%=*}; value=${line#*=}
-      [[ "$key" == FRONTEND_PORT ]] || fail "Unsupported configuration key $key in $file"
-      FRONTEND_PORT=$value
-    done < "$file"
-  fi
-  [[ "$FRONTEND_PORT" =~ ^[0-9]{1,5}$ ]] && (( 10#$FRONTEND_PORT >= 1 && 10#$FRONTEND_PORT <= 65535 )) || fail 'FRONTEND_PORT must be 1–65535.'
+  infra_load || fail 'Invalid infra machine configuration.'
+  [[ "$infra_legacy_local" == 0 && ! -e infra/.env.dev ]] || fail 'Run make setup to migrate infra configuration.'
+  if [[ "$mode" == local ]]; then FRONTEND_PORT=$LOCAL_FRONTEND_PORT; else FRONTEND_PORT=$DEV_FRONTEND_PORT; fi
   export FRONTEND_PORT
   compose=(docker compose --env-file /dev/null -p "$project" -f "infra/compose.$mode.yml")
 }

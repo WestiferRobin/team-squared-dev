@@ -160,9 +160,9 @@ The committed baseline and certified IDE delta's TRANSFORM inventory is path-sco
 
 | Identity | Exact permitted paths |
 | --- | --- |
-| Database prefix `goalstats_template_py` | `.env.example`; `docker/compose.local.yml`; `docker/compose.dev.yml`; `docs/service/development.md`; `docs/standard/template.md`; `scripts/host_development.py`; `scripts/smoke/runtime.py`; `scripts/validation/certify_workflows.py`; `tests/fixtures/smoke.py` |
+| Database prefix `goalstats_template_py` | `src/settings/environment.py`; `tests/unit/test_development_entrypoint.py`; `docker/compose.local.yml`; `docker/compose.dev.yml`; `docs/service/development.md`; `docs/standard/template.md`; `scripts/host_development.py`; `scripts/smoke/runtime.py`; `scripts/validation/certify_workflows.py`; `tests/fixtures/smoke.py` |
 | Logger label `goalstats_template` | `src/main.py`; `docs/standard/template.md` |
-| Runtime `goalstats-template-py` | `.env.example`; `docker/compose.local.yml`; `docker/compose.dev.yml`; `docker/compose.test.yml`; `docs/service/development.md`; `docs/standard/template.md`; `scripts/host_development.py`; `scripts/smoke/runtime.py`; `scripts/test_ownership.py`; `scripts/tests/test_host_development.py`; `scripts/tests/test_workflow.py`; `scripts/validation/certify_workflows.py`; `scripts/workflow.py`; `src/settings/base.py`; `tests/fixtures/smoke.py`; `tests/unit/schemas/test_domain.py` |
+| Runtime `goalstats-template-py` | `src/settings/environment.py`; `tests/unit/test_development_entrypoint.py`; `docker/compose.local.yml`; `docker/compose.dev.yml`; `docker/compose.test.yml`; `docs/service/development.md`; `docs/standard/template.md`; `scripts/host_development.py`; `scripts/smoke/runtime.py`; `scripts/test_ownership.py`; `scripts/tests/test_host_development.py`; `scripts/tests/test_workflow.py`; `scripts/validation/certify_workflows.py`; `scripts/workflow.py`; `src/settings/base.py`; `tests/fixtures/smoke.py`; `tests/unit/schemas/test_domain.py` |
 | API `GoalStats Template API` | `src/main.py`; `docs/standard/template.md` |
 | Repository `template-goalstats-service` | `docs/standard/template.md` |
 | CI `goalstats-template-${{` | `.github/workflows/ci.yml`; `docs/standard/template.md` |
@@ -240,10 +240,10 @@ parent User gitlink update. Scaffold never stages, commits or pushes.
 
 ## Configuration and ports
 
-The parent owns infra/.env.local and infra/.env.dev, created only when absent from
-corresponding .example files. The existing .env.dev placeholder is preserved.
-The current parser supports FRONTEND_PORT only, treating files as data rather than
-executing shell content. Selected file/defaults take precedence over inherited exports.
+The parent owns ignored `infra/.env.local`, with LOCAL_FRONTEND_PORT and DEV_FRONTEND_PORT.
+Code defaults live in `scripts/infra-config.sh`; setup creates private configuration
+and preserves valid existing bytes. Legacy ports migrate with private recovery copies.
+DEV is a runtime mode, not another file. No env examples or parent TEST policy are needed.
 No child dotenv files are copied, sourced, or overwritten.
 
 | Mode | Frontend host port | Container port | Compose project |
@@ -360,17 +360,17 @@ factory once, and disables generic Flask dotenv loading, the Flask debugger and 
 Use Python 3.12, a repository `.venv`, and the single `requirements.txt`.
 
 Inside a service repository, `make providers ENV=local` starts only PostgreSQL and
-Redis on loopback (defaults 55432/56379), retains LOCAL data, and generates private
-`.env.host.local` from validated service-specific configuration. Build initially,
+Redis on loopback (defaults 55432/56379), retains LOCAL data, and uses canonical private
+`.env.local` machine configuration prepared by setup. Build initially,
 then `make migrate ENV=local`; start PyCharm's Python-script configuration or VS
 Code's **Flask: host LOCAL**. Select `.venv/bin/python`; Sources Root is optional
-editor assistance. Direct main loads the host file without any IDE env profile. Stop the
+editor assistance. Direct main derives host URLs from that machine file without any IDE env profile. Stop the
 IDE process before `make providers-stop ENV=local`. Full Docker workflows remain
 available. See each service's README and `docs/service/development.md`.
 
 Ordinary integration testing remains `make integration`. Optional `make test-providers`
 owns fresh disposable TEST PostgreSQL/Redis, generated credentials, dynamic loopback
-ports, a private env file and ownership manifest, and a foreground lease. Fixtures
+ports, a private JSON ownership manifest, and a foreground lease. Fixtures
 verify that lease and the exact Docker project, container IDs, labels and endpoints
 before destructive database or server-wide Redis tests. Ctrl-C/SIGTERM cleans only
 the owned session. LOCAL/DEV providers are never reused for those tests.
@@ -379,9 +379,8 @@ Only `.vscode/launch.json`, `.vscode/settings.json` and optional
 `.vscode/extensions.json` are permitted IDE payloads. JSON must be portable and must
 not embed credentials, provider URLs, absolute machine paths, or generated session
 paths. `.idea/`, `.venv/`, `.host-sessions/`, `.env.host.local`, `.env.host.test.*`, and
-all other real dotenv files remain forbidden payloads; `.env.example` is the sole
-tracked environment source. The implementation uses `.host-sessions/<project>/test.env`
-for private TEST files rather than a `.env.host.test.*` naming convention.
+all other real dotenv files remain forbidden payloads. No env example is tracked.
+TEST endpoint handoff uses verified JSON manifests, never a session env file.
 
 Scaffold validation checks a complete IDE-support profile when the source opts in.
 The existing business-runtime classifier deliberately retains its runtime anchors:
@@ -415,3 +414,15 @@ Scaffold guards require the shared loader and forbid application-launch envFile/
 injection. The separate owned TEST debug envFile remains supported. No identity
 replacement rules or package-path transformations change. The frozen IDE payload
 fixture and its digest cover this correction; generated private files remain forbidden.
+
+
+## Canonical service environment configuration
+
+Generated Flask services own exactly two private files: `.env.local` for machine
+credentials/ports and `.env.test` for endpoint-free TEST policy. `make setup` creates
+them from `src/settings/environment.py`. Direct main derives loopback URLs; Docker
+LOCAL/DEV receive their appropriate provider configuration. PyCharm script Run and
+VS Code F5 need no environment profile. Owned integration sessions use private JSON
+manifests under `.host-sessions/`, never a developer-facing session env file.
+Scaffolds copy code, not private configuration. The frozen exact delta and bounded
+identity allowlist cover the shared schema and reject private artifacts.

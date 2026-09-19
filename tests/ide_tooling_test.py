@@ -110,9 +110,10 @@ class IDETooling(unittest.TestCase):
 
     def test_owned_session_consumers_and_no_default_test_or_dev_publication(self):
         for path in ("tests/fixtures/database.py", "tests/fixtures/redis.py"):
-            self.assertIn(b"verify_test_providers()", IDE_PAYLOAD[path][1])
+            self.assertIn(b"owned_test_config()", IDE_PAYLOAD[path][1])
         for path in ("docker/compose.dev.yml", "docker/compose.test.yml"):
-            self.assertEqual(IDE_PAYLOAD[path], PAYLOAD[path])
+            expected = PAYLOAD[path][1].replace(b'OPENAPI_ENABLED: "true"', b'OPENAPI_ENABLED: ${OPENAPI_ENABLED:-true}').replace(b'LOG_LEVEL: INFO', b'LOG_LEVEL: ${LOG_LEVEL:-INFO}\n      CACHE_TTL_SECONDS: ${CACHE_TTL_SECONDS:-300}')
+            self.assertEqual(IDE_PAYLOAD[path][1], expected)
         ownership = IDE_PAYLOAD["scripts/test_ownership.py"][1]
         for token in (
             b"TEST_SESSION_MANIFEST",
@@ -130,7 +131,7 @@ class IDETooling(unittest.TestCase):
         mode, body = data["tests/fixtures/redis.py"]
         data["tests/fixtures/redis.py"] = (
             mode,
-            body.replace(b"verify_test_providers()", b"pass"),
+            body.replace(b"owned_test_config()", b"pass"),
         )
         with self.assertRaises(ValueError):
             t.plan(data, "goalstats-user-service", "User")
@@ -143,7 +144,7 @@ class IDETooling(unittest.TestCase):
         app = next(c for c in launch["configurations"] if "program" in c)
         self.assertNotIn("envFile", app)
         self.assertNotIn("env", app)
-        self.assertIn(
+        self.assertNotIn(
             "envFile", next(c for c in launch["configurations"] if "module" in c)
         )
         for key, value in (
@@ -156,3 +157,21 @@ class IDETooling(unittest.TestCase):
             payload[".vscode/launch.json"] = ("100644", json.dumps(modified).encode())
             with self.assertRaises(ValueError):
                 t.plan(payload, "goalstats-user-service", "User")
+
+
+    def test_canonical_schema_and_private_file_rejection(self):
+        self.assertNotIn(".env.example", IDE_PAYLOAD)
+        for path in (".env.local", ".env.test", ".env.example", ".env.host.local", ".host-sessions/x/manifest.json"):
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                t.validate_path(path)
+        schema = IDE_PAYLOAD["src/settings/environment.py"][1]
+        self.assertIn(b"LOCAL_KEYS", schema)
+        self.assertIn(b"def test_policy(", schema)
+        values = t.identity("goalstats-user-service", "User")
+        transformed = t.transform(schema, values, "src/settings/environment.py")
+        self.assertIn(b'DATABASE = "goalstats_user_py"', transformed)
+        with self.assertRaises(ValueError):
+            t.transform(b'OTHER = "goalstats_template_py"\n', values, "src/settings/environment.py")
+        ownership = IDE_PAYLOAD["scripts/test_ownership.py"][1]
+        self.assertIn(b"def owned_test_config(", ownership)
+        self.assertIn(b"manifest = verify_host_session(values)", ownership)

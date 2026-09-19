@@ -10,7 +10,8 @@ MIGRATION = "alembic/versions/b7f42e9c1a60_initial_items_actions.py"
 # Exact service/database/logger identities, never a Python package mapping.
 IDENTITY_PATHS = {
     b"goalstats_template_py": {
-        ".env.example",
+        "src/settings/environment.py",
+        "tests/unit/test_development_entrypoint.py",
         "docker/compose.local.yml",
         "docker/compose.dev.yml",
         "docs/service/development.md",
@@ -22,7 +23,8 @@ IDENTITY_PATHS = {
     },
     b"goalstats_template": {"src/main.py", "docs/standard/template.md"},
     b"goalstats-template-py": {
-        ".env.example",
+        "src/settings/environment.py",
+        "tests/unit/test_development_entrypoint.py",
         "docker/compose.local.yml",
         "docker/compose.dev.yml",
         "docker/compose.test.yml",
@@ -72,7 +74,6 @@ TEXT_NAMES = {
     "Makefile",
     ".gitignore",
     ".dockerignore",
-    ".env.example",
     ".gitkeep",
 }
 
@@ -174,7 +175,7 @@ def validate_path(path):
             "Forbidden payload artifact: " + path,
         )
         require(
-            not (low.startswith(".env") and path != ".env.example")
+            not low.startswith(".env")
             and not low.startswith(".coverage"),
             "Forbidden environment/coverage payload: " + path,
         )
@@ -271,20 +272,20 @@ def ide_anchors(database="goalstats_template_py", slug="goalstats-template-py"):
             b'if __name__ == "__main__":',
         ),
         "src/settings/host.py": (
-            b"def load_host_config(",
-            b"def read_host_file(",
-            b"os.O_NOFOLLOW",
-            b"os.fstat",
-            b"stat.S_ISREG",
-            b"info.st_uid != os.getuid()",
-            b"info.st_mode & 0o077",
-            b'".env.host.local"',
-            b'"HOST_APP_PORT": "5300"',
-            b"Settings.load(values)",
-            b"def diagnose_providers(",
-            b"def check_app_port(",
+            b"def load_host_config(", b'".env.local"', b"load_machine(HOST_FILE)",
+            b"Settings.load(values)", b"def diagnose_providers(", b"def check_app_port(",
         ),
-        ".gitignore": (b".idea/", b".venv/", b".host-sessions/", b".env.*"),
+        "src/settings/environment.py": (
+            b"os.O_NOFOLLOW", b"os.fstat", b"stat.S_ISREG", b"info.st_uid != os.getuid()",
+            b"info.st_mode & 0o077", b"LOCAL_KEYS", b"POLICY_DEFAULTS", b"def test_policy(",
+            b"def application(", b'"HOST_APP_PORT": "5300"',
+            ('SERVICE = "' + slug + '"').encode(), ('DATABASE = "' + database + '"').encode(),
+        ),
+        "scripts/environment_setup.py": (
+            b"def setup_files(", b"DEV_POSTGRES_PASSWORD", b"verify(mode, values)",
+            b"os.replace", b"has_volume(mode)", b'".env.test"',
+        ),
+        ".gitignore": (b".idea/", b".venv/", b".host-sessions/", b".env.local", b".env.test"),
         ".vscode/launch.json": (
             b'"type": "debugpy"',
             b"${workspaceFolder}/src/main.py",
@@ -309,7 +310,6 @@ def ide_anchors(database="goalstats_template_py", slug="goalstats-template-py"):
             b"def test_providers(",
             b"verify_host_session(env)",
             (database + "_local").encode(),
-            (slug + ":local:v1").encode(),
             (slug + "-test-").encode(),
             b"fcntl.LOCK_EX",
             b"stack.stop(volumes=True)",
@@ -323,14 +323,14 @@ def ide_anchors(database="goalstats_template_py", slug="goalstats-template-py"):
             b"def verify_test_providers(",
             b"def verify_host_session(",
         ),
-        "tests/fixtures/database.py": (b"verify_test_providers()",),
-        "tests/fixtures/redis.py": (b"verify_test_providers()",),
+        "tests/fixtures/database.py": (b"owned_test_config()",),
+        "tests/fixtures/redis.py": (b"owned_test_config()",),
         "scripts/validation/certify_host.py": (
             b"def certify_host(",
             b"certify_session(",
         ),
         "README.md": (b"IDE DEVELOPMENT", b"make providers ENV=local"),
-        "docs/service/development.md": (b"PyCharm", b"VS Code", b".env.host.local"),
+        "docs/service/development.md": (b"PyCharm", b"VS Code", b".env.local"),
         "docs/testing/overview.md": (b"ownership", b"make test-providers"),
     }
 
@@ -340,7 +340,7 @@ def check_ide_contract(payload, values=None):
         validate_ide_json(".vscode/launch.json", payload[".vscode/launch.json"][1])
         launch = json.loads(payload[".vscode/launch.json"][1])
         for config in launch.get("configurations", []):
-            if config.get("program") == "${workspaceFolder}/src/main.py":
+            if config.get("program") or config.get("module"):
                 require(
                     "envFile" not in config and "env" not in config,
                     "Direct app launch must use the shared host loader, not IDE environment",
@@ -539,7 +539,8 @@ def transform(data, values, path):
         tail = data[b:]
         if token == b"goalstats_template_py":
             require(
-                re.match(rb"_(?:local|dev)(?![A-Za-z0-9_])|_(?=[\"'])", tail),
+                re.match(rb"_(?:local|dev)(?![A-Za-z0-9_])|_(?=[\"'])", tail)
+                or (path == "src/settings/environment.py" and data[:a].endswith(b'\nDATABASE = "') and tail.startswith(b'"\n')),
                 "Unexpected database identity: " + path,
             )
         else:

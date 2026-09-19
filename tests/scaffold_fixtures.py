@@ -39,7 +39,7 @@ def canonical():
     return result
 
 
-PAYLOAD = canonical()
+PAYLOAD = {p: entry for p, entry in canonical().items() if p != ".env.example"}
 
 
 def golden(payload, stem="user", domain="User"):
@@ -202,7 +202,7 @@ class Fixture:
         return p
 
 
-IDE_DELTA_SHA256 = "8641f4e0c7e6cab78e11650470ff024b712ca5072588800e97fc1f404a99764b"
+IDE_DELTA_SHA256 = "7953eea3de7f226f3140d24f3a26a75e6028ff826547d8c8d1e8b027ed127f40"
 
 
 def ide_payload():
@@ -214,7 +214,7 @@ def ide_payload():
         )
     with tempfile.TemporaryDirectory(prefix="ide-payload-") as directory:
         root = Path(directory)
-        for name, (mode, data) in PAYLOAD.items():
+        for name, (mode, data) in canonical().items():
             path = root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(data)
