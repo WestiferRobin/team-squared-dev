@@ -187,7 +187,7 @@ main() {
   fi
   echo 'Workspace ready. Submodules are at approved commits; runtime readiness is separate.'
   report "$root"
-  echo 'Detached HEAD at a pin is normal. Scaffold previews without writes and safely attaches its approved destination to master on installation.'
-  echo 'Docker is needed only for container workflows. goalstats-user-service remains runtime-pending until implemented.'
+  echo 'Detached HEAD at a pin is normal. Create a child feature branch before editing; see docs/CONTRIBUTING.md.'
+  echo 'Parent full-stack runtime-pending. Follow standalone child guides; parent setup does not install child dependencies. Scaffolding is not onboarding.'
 }
 main "$@"

@@ -16,25 +16,25 @@ help:
 	  'Canonical workspace: edit independent child repositories directly.' \
 	  'WORKSPACE' \
 	  '  make help                    Show scope and commands' \
-	  '  make setup                   Prepare this checkout and missing env files; no Docker' \
-	  '  make sync                    Fast-forward parent master; synchronize approved pins; no Docker' \
-	  '  make scaffold-service SERVICE=<service> DOMAIN=<Domain>  Transform pinned flat-src Flask identity (Python 3.12)' \
-	  '    Flat src; main:create_app(); no package/path renaming. Safe existing-master attachment.' \
-	  '' 'FULL STACK' \
-	  '  make build [ENV=local|dev]    Build every active image' \
-	  '  make run [ENV=local|dev]      Start one box; wait for required readiness' \
+	  '  make setup                   Initialize approved child pins and parent config; no child setup' \
+	  '  make sync                    Sync clean parent master to approved pins; not feature updates' \
+	  '  make scaffold-service SERVICE=<service> DOMAIN=<Domain>  DEFERRED: older generator; not onboarding' \
+	  '    Repair before generating another service; do not scaffold existing User.' \
+	  '' 'FULL STACK (build/run/migrate/smoke currently blocked)'  \
+	  '  make build [ENV=local|dev]    BLOCKED: incomplete parent runtime composition' \
+	  '  make run [ENV=local|dev]      BLOCKED: use standalone child guides' \
 	  '  make stop [ENV=local|dev]     Stop only this box; preserve volumes' \
 	  '  make logs [ENV=local|dev]     Follow aggregate stack logs' \
-	  '  make migrate [ENV=local|dev]  Run active child migration tooling against box databases' \
+	  '  make migrate [ENV=local|dev]  BLOCKED: incomplete backend migration contract' \
 	  '' 'VERIFY' \
 	  '  make test                    Delegate normal ACTIVE child tests; app E2E remains off' \
-	  '  make smoke [ENV=local|dev]    Check the running box and internal connectivity' \
+	  '  make smoke [ENV=local|dev]    BLOCKED: incomplete parent runtime contract' \
 	  '' 'ENV defaults to local. LOCAL: developer containers. DEV: built verification containers.' \
-	  'First use: make setup. Runtime later: make migrate; make run.' \
-	  'DRY_RUN=true previews with no writes. DOMAIN changes identity, never Item/Action.' \
+	  'First use: make setup, then follow the selected child README.' \
+	  'Root make test delegates child suites; parent tooling tests are documented separately.' \
 	  'Active contracts must be complete before the box can build or run.' \
 	  'goalstats-user-service runtime contract pending; references and docs are non-runtime.' \
-	  'See docs/READINESS.md and docs/DEVELOPMENT.md.'
+	  'See README.md, docs/CONTRIBUTING.md and docs/READINESS.md.'
 	@bash scripts/box.sh list
 setup sync:
 	@bash scripts/workspace.sh "$@"

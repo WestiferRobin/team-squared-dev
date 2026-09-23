@@ -1,116 +1,85 @@
-# Team Squared canonical workspace
+# GoalStats development workspace
 
-Clone once, prepare the workspace, develop in independent child repositories, and
-sync approved integration pins. The parent owns gitlinks and full-stack composition.
+GoalStats is a football analytics and prediction project. `team-squared-dev` is its
+workspace/integration repository: clone once, work in independent child repositories,
+and integrate reviewed changes through approved child commit pins.
 
-**Workspace setup is independent of runtime readiness.** Setup/sync need no Docker.
-The certified template and published containerized app scaffold are pinned for
-development. Template Mac verification passed; standalone app manual verification
-remains pending. The active user service remains runtime-pending, so full-stack
-commands remain blocked until its contract is complete. See [readiness](docs/READINESS.md).
+## Repository map
 
-## First use and daily sync
+| Repository | Role |
+| --- | --- |
+| This parent | Workspace setup/sync, approved pins, shared workflow and orchestration |
+| [Template](backend/template-goalstats-service/README.md) | Frozen canonical backend reference; no product features |
+| [User](backend/goalstats-user-service/README.md) | Active backend repository on an older Item/Action scaffold; frozen-foundation adoption is upcoming. User/auth is not yet implemented |
+| [App](frontend/goal-stats-app/README.md) | Next.js development/demo foundation; standalone UI work can begin before full-stack integration |
+| [Wiki](docs/goal-stats-wiki/README.md) | Project context, decisions and learning material; operational instructions belong to the owning repository |
+| [RoadToTheFinal](frontend/RoadToTheFinal/README.txt) | Legacy football/product behavior and data reference; neither active runtime nor canonical architecture |
 
-On macOS, install Git (with submodule support), GNU Make 3.81+, Bash 3.2+, OpenSSH,
-and ordinary shell utilities (`cat`, `dirname`, `mkdir`, `mv`, `rm`, plus Git's normal
-system tools). Apple's command-line developer tools supply Git and GNU Make.
-Configure your SSH key and GitHub repository access for the URLs in `.gitmodules`.
-Git reports authentication/download errors when initialization needs the network.
-No host Node/.NET or Docker is required for workspace preparation.
+Template is frozen at `6600facf42ecf9a3431b44f5d19ff2ac2a3b0b07`.
+Product features do not go there. Template changes require a demonstrated canonical
+defect and separate authorization.
+
+## Day 1: initialize the workspace
+
+Install Git, GNU Make 3.81+, Bash (3.2+ supported), OpenSSH and normal shell utilities.
+Configure GitHub SSH authentication and access to the parent and **all five** children
+in [.gitmodules](.gitmodules), including Wiki and RoadToTheFinal. Successful SSH
+account authentication does not prove access to each repository. If initialization
+fails, identify the specific inaccessible child and ask its owner to verify access.
 
 ```bash
 git clone git@github.com:WestiferRobin/team-squared-dev.git
 cd team-squared-dev
 make setup
-# Open this root directory in your editor.
-# Daily, on clean parent master with children at approved pins:
-make sync
+git submodule status
 ```
 
-Setup prepares the **current** parent commit, initializes all five children at exact
-pins, and prepares the private parent infra/.env.local machine configuration. It never pulls the parent.
-Sync fast-forwards parent master and adopts only its approved child pins; it never
-changes env files. Both preserve developer work by refusing dirty or off-pin state.
-Owned repositories use master only; RoadToTheFinal retains its main exception.
-Detached children at pins are normal. Scaffold attaches its safe destination to
-existing master automatically during installation; preview does not attach.
+Parent setup initializes approved repository pins and private parent configuration.
+It does **not** install every child's dependencies, start providers, migrate databases
+or run applications. It needs no Docker or host Node. Detached child HEADs at approved
+pins are normal; create a child feature branch before editing.
 
-## Bootstrap an approved Python service
+## Choose your child
 
-Python 3.12 is required for scaffolding (standard library only). The parent-pinned
-Flask template is `720260c7d8d5096bddbd0cc6d6f90f9f311d809a`. Setup/sync remain
-Git-only; scaffold never fetches, installs packages, runs Docker, or executes template code.
+- **Frontend:** open `frontend/goal-stats-app` and follow its [setup](frontend/goal-stats-app/README.md),
+  [development](frontend/goal-stats-app/docs/DEVELOPMENT.md) and
+  [testing](frontend/goal-stats-app/docs/TESTING.md) guides. It runs independently of User.
+- **Backend:** open `backend/goalstats-user-service` and follow its current
+  [setup](backend/goalstats-user-service/README.md),
+  [development](backend/goalstats-user-service/docs/service/development.md) and
+  [testing](backend/goalstats-user-service/docs/testing/overview.md) guides.
+  Do not substitute Template instructions: User has not adopted the frozen foundation.
 
-```sh
-make scaffold-service SERVICE=goalstats-user-service DOMAIN=User DRY_RUN=true
-make scaffold-service SERVICE=goalstats-user-service DOMAIN=User
-```
+Use the child as the IDE root for its repository-specific launch settings. Child
+setup/checks require the prerequisites in that child's guide. LOCAL and DEV are local
+runtime modes, not remote deployment. Windows is not certified; WSL is a candidate
+requiring team verification, not a promised supported path.
 
-Preview performs no filesystem or Git writes, including no temporary export or lock.
-Actual installation safely attaches an approved detached destination to existing
-master and leaves generated files unstaged. Parent must be clean on master; destination
-HEAD, master, origin/master, registry placeholder SHA and parent pin must agree.
-No branch is created. A second invocation refuses; there is no overwrite mode.
+## Parent command status
 
-DOMAIN changes service identity only, including the logger label and database prefix:
-`GoalStats Template API` → `GoalStats User API`, and `goalstats-template-py` →
-`goalstats-user-py`. Source paths remain flat under `src/`; the factory stays
-`main:create_app()`. No Python package directory or import is renamed. Item/Action and the reference migration remain intact. No User
-model, authentication, login or registration is generated. The approved placeholder
-README and ignore file are replaced exactly, never merged with old runtime rules.
-
-Installation uses atomic replacement per file, not an atomic whole-tree transaction.
-Failure preserves partial work and durable evidence beneath parent Git administration
-in `team-squared-scaffold-incomplete`; retry refuses. Preserve and inspect that state
-before deliberate reconciliation. No automatic rollback or recovery command exists.
-Historical policy-1 evidence is never consumed or deleted by the Python scaffolder.
-
-Read [the transformation contract](docs/DEVELOPMENT.md#service-scaffolding).
-The Python tooling and disposable generated runtime are independently certified;
-see [validation results](docs/VALIDATION.md). Real User preservation/scaffolding
-belongs to Prompt 3.
-Existing tracked TODO changes and dirty User are intentionally preserved blockers.
-
-## Repositories
-
-| Role | Path |
+| Command | Today |
 | --- | --- |
-| ACTIVE frontend | frontend/goal-stats-app |
-| ACTIVE, runtime-pending | backend/goalstats-user-service |
-| REFERENCE template | backend/template-goalstats-service |
-| REFERENCE legacy frontend | frontend/RoadToTheFinal |
-| DOCS project/class documentation | docs/goal-stats-wiki |
+| `make help` | Show workspace scope and command limitations |
+| `make setup` | Prepare the current checkout; preserve work by refusing unsafe state |
+| `make sync` | Fast-forward clean parent `master` and adopt approved pins; not a feature-branch update command |
+| `make test` | Validate active backend structure, then delegate App/User normal suites with App E2E disabled; requires child prerequisites |
+| `make build`, `make migrate`, `make run`, `make smoke` | **Blocked:** parent backend runtime composition is incomplete |
+| `make stop`, `make logs` | Selected parent Compose project only; do not control standalone child projects |
+| `make scaffold-service ...` | **Not onboarding:** generator targets an older foundation; repair before generating another service |
 
-`config/components.tsv` defines runtime roles. References/docs are synchronized,
-but excluded from normal build/run/migrate/test/smoke and Compose.
+Do not scaffold over existing User or bypass full-stack guards. Root `make test`
+is not the parent tooling-test command. See [current readiness](docs/READINESS.md).
 
-## Public commands
+## Contribute
 
-```text
-make help
-make setup
-make sync
-make scaffold-service SERVICE=<approved-service> DOMAIN=<approved-domain> [DRY_RUN=true]
-make build [ENV=local|dev]
-make run [ENV=local|dev]
-make stop [ENV=local|dev]
-make logs [ENV=local|dev]
-make migrate [ENV=local|dev]
-make test
-make smoke [ENV=local|dev]
-```
+Read [Contributing](docs/CONTRIBUTING.md) for branches, PRs, reviews, task ownership,
+Ready/Done and bug reports. Start with [four task drafts](docs/FIRST_TASKS.md);
+these are not yet GitHub Issues. [TODO](TODO.md) is a high-level roadmap only.
 
-ENV defaults to local. LOCAL means developer containers (frontend port 33000); DEV
-means built verification containers (33001), not remote deployment. Container
-workflows require Docker with Compose v2 and complete active contracts. Migrations
-are explicit; stop preserves volumes and affects only the selected box project.
-Normal `make test` delegates all ACTIVE child normal suites with app E2E disabled,
-and fails before delegation if an active test interface is missing.
+**A child merge does not automatically update the approved workspace.** A separate
+reviewed parent pin PR adopts its published commit.
 
-Windows is **not certified**. WSL with Git/Make/Bash and Docker Desktop integration
-is the preferred candidate. Git Bash plus GNU Make remains possible after testing.
-Native PowerShell is not the primary supported script interface.
-
-[Development](docs/DEVELOPMENT.md) explains child branches, manual parent integration,
-ignored files, safety refusals, interrupted sync, and configuration.
-[Validation](docs/VALIDATION.md) records workspace checks and runtime limitations.
+Use `make sync` only from a clean integration workspace. Preserve dirty/off-pin work;
+finish its branch/PR or use a separate clean integration checkout. Read
+[Development](docs/DEVELOPMENT.md) for sync mechanics and troubleshooting.
+[Validation](docs/VALIDATION.md) contains historical evidence, not current runtime certification.
