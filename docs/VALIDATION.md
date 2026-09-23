@@ -1,3 +1,18 @@
+# Historical validation archive
+
+All records below describe earlier commits, tooling policies and execution results.
+Their SHAs, commands, branch practices, counts and next-step language are retained as
+historical evidence, **not current instructions** or proof of current runtime readiness.
+In particular, `720260c...` is an old fixture/generation baseline, not the frozen
+canonical Template `6600facf42ecf9a3431b44f5d19ff2ac2a3b0b07`.
+
+Use [Readiness](READINESS.md) for current state, [Development](DEVELOPMENT.md) for
+workspace commands and [Contributing](CONTRIBUTING.md) for the current PR workflow.
+This handoff does not recertify child applications, repair scaffolding or change pins.
+Original evidence follows unchanged.
+
+---
+
 # Flat-src scaffold contract
 
 Canonical template: `720260c7d8d5096bddbd0cc6d6f90f9f311d809a`.
